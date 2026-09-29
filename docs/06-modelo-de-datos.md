@@ -4,7 +4,9 @@ Esquema propuesto para Postgres en Supabase. Todas las tablas de negocio llevan 
 
 Convenciones: claves `uuid`, `created_at` y `updated_at` en todas las tablas, baja lógica con `deleted_at` donde tenga sentido (expedientes, documentos, contactos, agentes, plantillas).
 
-Principio: las tablas de **configuración** (plantillas de proceso, catálogo de plazos, plantillas de escritos, agentes, materias) pertenecen al abogado. Las filas de ejemplo que trae el sistema se copian a su `owner_id` al inicializar, para que pueda editarlas o borrarlas.
+Principio: las tablas de **configuración** (tipos de proceso, catálogo de plazos, plantillas de escritos, agentes, materias) pertenecen al abogado y se administran desde el área Configuración. Las filas de ejemplo que trae el sistema se copian a su `owner_id` al inicializar, para que pueda editarlas o borrarlas.
+
+Todos los campos de texto que carga el abogado se guardan **ya normalizados** (`10-normalizacion-de-texto.md`): la base no guarda dos escrituras distintas de la misma carátula.
 
 ## 1. Diagrama de entidades
 
@@ -51,7 +53,7 @@ erDiagram
 ### Identidad y contactos
 
 **profiles**: extensión de `auth.users`.
-`id`, `nombre`, `matricula`, `cuit`, `domicilio_electronico`, `telefono`, `preferencias jsonb` (recordatorios, modelo por defecto, centro judicial habitual, política de citas no verificadas).
+`id`, `nombre`, `matricula`, `cuit`, `domicilio_electronico`, `telefono`, `preferencias jsonb` (recordatorios, modelo por defecto, centro judicial habitual, política de citas no verificadas, corrección de tildes al normalizar texto).
 
 **contacts**: personas y organismos.
 `id`, `owner_id`, `tipo` (cliente | contraparte | letrado | perito | juzgado | mediador | escribano | otro), `nombre`, `documento`, `domicilio_real`, `domicilio_electronico`, `telefono`, `email`, `notas`, `es_cliente bool`, `datos_facturacion jsonb`, `deleted_at`.
@@ -61,8 +63,9 @@ erDiagram
 
 ### Configuración del abogado
 
-**process_templates**: plantillas de proceso.
-`id`, `owner_id`, `nombre`, `tipo_proceso`, `descripcion`, `materias text[]`, `activa bool`, `origen` (ejemplo | propia), `deleted_at`.
+**process_templates**: tipos de proceso (ordinario, sumario, expropiación…).
+`id`, `owner_id`, `nombre`, `clave` (generada del nombre, única por `owner_id`), `descripcion`, `materias text[]`, `activa bool`, `origen` (ejemplo | propia), `deleted_at`.
+Un tipo de proceso referenciado por algún expediente no se borra: se desactiva (`activa = false`), así deja de ofrecerse en las altas nuevas sin dejar expedientes sin etapas.
 
 **process_template_stages**: etapas de cada plantilla.
 `id`, `template_id`, `clave`, `nombre`, `orden`, `transiciones text[]` (claves de etapas siguientes), `deadline_type_ids uuid[]` (plazos típicos), `writing_template_ids uuid[]` (escritos típicos), `guide_ids uuid[]`, `agent_ids uuid[]` (agentes sugeridos), `checklist jsonb`.
@@ -82,14 +85,14 @@ erDiagram
 ### Expedientes
 
 **cases**
-`id`, `owner_id`, `numero`, `anio`, `caratula`, `court_id`, `centro_judicial`, `fuero`, `process_template_id`, `materia`, `rol_cliente`, `client_id`, `estado`, `etapa_actual` (clave de `process_template_stages`), `etapa_desde`, `monto numeric`, `moneda`, `monto_fecha`, `fecha_inicio_mediacion`, `fecha_demanda`, `fecha_sentencia`, `fecha_firmeza`, `etiquetas text[]`, `notas`, `ultima_entrada_at`, `ultima_sync_sae_at`, `seguido_en_sae bool`, `deleted_at`.
+`id`, `owner_id`, `numero`, `anio`, `caratula` (normalizada), `caratula_actor`, `caratula_demandado`, `caratula_objeto` (componentes, para buscar por parte y rearmarla), `court_id`, `centro_judicial`, `fuero`, `process_template_id`, `materia`, `rol_cliente`, `client_id`, `estado`, `etapa_actual` (clave de `process_template_stages`), `etapa_desde`, `monto numeric`, `moneda`, `monto_fecha`, `fecha_inicio_mediacion`, `fecha_demanda`, `fecha_sentencia`, `fecha_firmeza`, `etiquetas text[]`, `notas`, `ultima_entrada_at`, `ultima_sync_sae_at`, `seguido_en_sae bool`, `deleted_at`.
 Índice único `(owner_id, court_id, numero, anio)`.
 
 **case_parties**
 `id`, `case_id`, `contact_id`, `rol` (actor | demandado | tercero | citado_garantia | sindico | perito | letrado_contraria | mediador | otro), `representa_a` (contact_id, null), `notas`.
 
 **stage_transitions**
-`id`, `case_id`, `etapa_desde`, `etapa_hasta`, `fecha`, `origen` (manual | ia_aprobada), `history_entry_id` (null), `ai_suggestion_id` (null), `prevista bool` (si la transición estaba en la plantilla).
+`id`, `case_id`, `etapa_desde`, `etapa_hasta`, `fecha`, `origen` (manual | ia_aprobada), `history_entry_id` (null), `ai_suggestion_id` (null), `prevista bool` (si la transición estaba en el tipo de proceso).
 
 **case_agents**: agentes seleccionados por expediente.
 `id`, `case_id`, `agent_id`, `seleccionado_at`, `activo bool`.
@@ -208,7 +211,7 @@ erDiagram
 
 - `holidays`: feriados nacionales y provinciales, ferias 2026–2038 (Acordada 840/26).
 - `deadline_types`: catálogo inicial marcado `verificado = false`, `origen = ejemplo`.
-- `process_templates` + `process_template_stages`: ordinario, sumarísimo, ejecutivo, monitorio, `origen = ejemplo`.
+- `process_templates` + `process_template_stages`: ordinario, sumarísimo, sumario, ejecutivo, monitorio, expropiación, sucesorio, desalojo y personalizado (sin etapas), `origen = ejemplo`.
 - `writing_templates`: escritos básicos, `origen = ejemplo`.
 - `subject_matters`: consumidor, daños y perjuicios, prescripción, contratos, locaciones, sucesiones, ejecuciones.
 - `courts`: juzgados civiles y comerciales de Capital, Concepción y Monteros **[a completar]**.

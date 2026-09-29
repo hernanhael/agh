@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans } from "next/font/google";
 import { Nav } from "@/components/Nav";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+/**
+ * IBM Plex Sans en toda la aplicación: una sola familia, para todo.
+ *
+ * La jerarquía se construye con peso, tamaño y color, no con familias
+ * distintas. Tiene versión variable, así que se carga sin fijar pesos y se
+ * dispone de todo el rango en un solo archivo.
+ */
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
 });
 
@@ -22,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plexSans.variable} h-full antialiased`}
     >
       <body className="flex h-full min-h-screen">
         <Nav />

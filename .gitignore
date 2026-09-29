@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# datos locales de la Fase 1 (almacen JSON provisorio)
+/.data/

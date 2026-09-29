@@ -16,7 +16,9 @@
 | Procesamiento asíncrono | **Vercel Queues** (o cron + tabla de trabajos si no está disponible) | Extracción de texto, OCR, embeddings y análisis de entradas nuevas fuera del ciclo de la petición. |
 | Recordatorios | **Vercel Cron** | Trabajo diario a las 7 h que envía recordatorios y alertas de falta de sincronización. |
 | Correo | Proveedor del Marketplace de Vercel (a elegir en la fase de código) | Recordatorios y alertas. |
-| Interfaz | Tailwind CSS + componentes accesibles | Rapidez de desarrollo, tema claro/oscuro. |
+| Interfaz | Tailwind CSS + componentes accesibles, íconos de **lucide-react** | Rapidez de desarrollo, tema claro/oscuro; un solo juego de íconos coherente, importados de a uno para no cargar el resto. |
+| Tipografía | **IBM Plex Sans** en toda la aplicación | Una sola familia: la jerarquía se construye con peso, tamaño y color, no con familias distintas. Tiene versión variable, así que todo el rango de pesos viene en un archivo. Cubre el castellano con tildes y ñ, y se sirve autoalojada por `next/font`, sin pedidos a Google en tiempo de ejecución. |
+| Sistema visual | Fondo de papel apenas cálido, superficies un tono más claras, bordes finos, un acento de azul tinta y colores de estado semánticos (rojo reservado a "paralizado") | Los expedientes son el contenido; el cromo tiene que desaparecer. Definido como variables CSS en `globals.css` y expuesto a Tailwind, para cambiarlo en un solo lugar. |
 
 ## 2. Diagrama de componentes
 
@@ -79,13 +81,22 @@ app/
   (auth)/            login, segundo factor
   hoy/               vista Hoy (Agenda)
   agenda/            calendario, vencimientos, contactos, honorarios
-  expedientes/       listado, ficha, historia, editor de escritos, agentes del expediente
-  ia/                constructor de agentes, conversaciones
+  expedientes/       listado, alta con tipo de proceso, ficha, historia, editor de escritos
+    nuevo/           alta con previsualización de carátula
+    [id]/            ficha
+    acciones.ts      acciones de servidor del área
+  ia/                conversaciones e informes (los agentes se configuran en configuracion/)
   guias/             navegación y lectura
-  configuracion/     plantillas de proceso, catálogo de plazos, plantillas de escritos, materias, juzgados, dispositivos SAE
+  configuracion/     área transversal de catálogos del abogado
+    estudio/         datos del abogado y preferencias
+    procesos/        tipos de proceso con sus etapas
+    agentes/         agentes especializados
+    acciones.ts      acciones de servidor del área
   api/               route handlers (chat, ingestión SAE, colas, cron)
 lib/
   plazos/            motor de plazos (puro, con tests)
+  formato/           normalización de texto (puro, con tests; ver 10-normalizacion-de-texto.md)
+  datos/             repositorios de configuración y expedientes; normalizan al guardar
   rag/               fragmentación, embeddings, búsqueda híbrida filtrada por agente y expediente
   agentes/           herramientas, armado de contexto, salidas estructuradas, verificación de citas, cobertura
   sae/               normalización de payloads, hash, vinculación de expedientes, selectores versionados
@@ -99,11 +110,33 @@ extension/           extensión de navegador (carpeta o repositorio aparte)
 content/
   guias/             guías Markdown de ejemplo
   normas/            textos normativos de ejemplo
-  plantillas/        plantillas de proceso y de escritos de ejemplo
+  plantillas/        tipos de proceso y de escritos de ejemplo
 supabase/
   migrations/        esquema y políticas RLS
   seed/              feriados, ejemplos de configuración, agentes de ejemplo, selectores SAE
 ```
+
+### 3.1 Persistencia provisoria
+
+Hasta que esté montado Supabase, los repositorios de `lib/datos/` guardan en un archivo JSON local (`.data/estudio.json`, fuera del control de versiones), que se siembra con los ejemplos del sistema la primera vez que se lee. Es deliberadamente un reemplazo temporal:
+
+- Todo el acceso pasa por `lib/datos/`, así que el cambio a Supabase se hace ahí y no toca páginas ni acciones.
+- No hay `owner_id` todavía: es monousuario de hecho, no solo de diseño.
+- Las escrituras se serializan en una cola dentro del proceso y el archivo se reemplaza de forma atómica, pero no hay protección entre procesos.
+- No sirve en un despliegue serverless, donde el sistema de archivos es de solo lectura. **Montar Supabase es requisito para desplegar.**
+
+### 3.2 Límite servidor / cliente en `lib/datos`
+
+`lib/datos` tiene dos mitades y conviene no mezclarlas:
+
+- **Repositorios** (`almacen`, `expedientes`, `procesos`, `agentes`, `estudio`): llegan al almacén y por lo tanto a `node:fs`. `almacen.ts` está marcado con `import "server-only"`, así que importarlos desde un componente de cliente falla con un mensaje claro en lugar de un error del empaquetador.
+- **Módulos puros** (`tipos`, `filtros`): tipos, constantes, búsqueda y filtrado. Corren en los dos lados, y eso es lo que permite que el listado filtre en el cliente con exactamente las mismas reglas que usaría el servidor.
+
+El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos` y `lib/datos/filtros`.
+
+### 3.3 Normalización de texto
+
+`lib/formato/` es un módulo puro que formatea lo que se carga según qué es el dato (nombre propio, título, texto libre). Los repositorios lo aplican al guardar, de modo que cualquier vía de carga futura —el importador del SAE, una carga masiva— quede formateada igual sin repetir la regla. Detalle en `10-normalizacion-de-texto.md`.
 
 ## 4. Motor de plazos
 

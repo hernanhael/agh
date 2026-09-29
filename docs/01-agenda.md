@@ -60,7 +60,7 @@ Es el componente más sensible del área. Se diseña como **módulo puro** (sin 
 
 ### 2.3 Plazos precargados por tipo de acto
 
-Catálogo de plazos frecuentes del fuero Civil y Comercial según Ley 9531, **propiedad del abogado**: él lo crea, edita y valida. Cada entrada tiene: nombre del acto, cantidad de días, tipo de días, artículo de referencia, tipos de proceso en los que aplica. El sistema trae ejemplos marcados **[a confirmar]** hasta que el abogado los valide contra el texto vigente. Las plantillas de proceso (`02-expedientes.md`) referencian este catálogo para los plazos típicos de cada etapa. Ejemplos de entradas a completar:
+Catálogo de plazos frecuentes del fuero Civil y Comercial según Ley 9531, **propiedad del abogado**: él lo crea, edita y valida. Cada entrada tiene: nombre del acto, cantidad de días, tipo de días, artículo de referencia, tipos de proceso en los que aplica. El sistema trae ejemplos marcados **[a confirmar]** hasta que el abogado los valide contra el texto vigente. Las tipos de proceso (`02-expedientes.md`) referencian este catálogo para los plazos típicos de cada etapa. Ejemplos de entradas a completar:
 
 - Contestar demanda en proceso ordinario.
 - Contestar demanda en proceso sumarísimo.

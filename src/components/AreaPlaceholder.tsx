@@ -1,7 +1,11 @@
+import type { ReactNode } from "react";
+
 interface AreaPlaceholderProps {
   titulo: string;
   descripcion: string;
   pendientes: string[];
+  /** Contenido extra debajo de la lista de pendientes. */
+  children?: ReactNode;
 }
 
 /**
@@ -9,7 +13,12 @@ interface AreaPlaceholderProps {
  * (docs/08-roadmap.md). Se reemplaza área por área a medida que cada
  * funcionalidad queda lista.
  */
-export function AreaPlaceholder({ titulo, descripcion, pendientes }: AreaPlaceholderProps) {
+export function AreaPlaceholder({
+  titulo,
+  descripcion,
+  pendientes,
+  children,
+}: AreaPlaceholderProps) {
   return (
     <div className="mx-auto max-w-2xl px-8 py-12">
       <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{titulo}</h1>
@@ -24,6 +33,7 @@ export function AreaPlaceholder({ titulo, descripcion, pendientes }: AreaPlaceho
           ))}
         </ul>
       </div>
+      {children}
     </div>
   );
 }

@@ -9,24 +9,36 @@ Fases ordenadas para llegar a un sistema usable lo antes posible. Cada fase tien
 
 ## Fase 1 — Esqueleto, expedientes e historia (4 a 5 semanas)
 
-- Proyecto Next.js + Supabase inicializado; autenticación con segundo factor.
-- Migraciones del modelo de datos (`06`) con RLS; semillas copiadas al abogado como ejemplos editables.
-- Layout con las cuatro áreas, Configuración y la vista Hoy.
-- **Configuración**: plantillas de proceso con etapas, catálogo de plazos, plantillas de escritos, materias, juzgados.
-- Expedientes: ficha con plantilla y materia, partes, etapas con transiciones, **historia unificada** con todos los tipos de entrada y filtros.
+Lo hecho hasta ahora:
+
+- [x] Proyecto Next.js inicializado; layout con las cuatro áreas, Configuración y la vista Hoy.
+- [x] **Motor de plazos** con tests y reglas parametrizadas (`lib/plazos`).
+- [x] **Normalización de texto** con tests (`lib/formato`, doc `10`), aplicada al guardar en todas las altas.
+- [x] **Configuración → Estudio**: datos del abogado y preferencias.
+- [x] **Configuración → Tipos de proceso**: alta, edición, desactivación y baja, con etapas; nueve ejemplos editables.
+- [x] **Configuración → Agentes**: alta, edición, duplicado y baja; cinco ejemplos editables.
+- [x] **Expedientes**: listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y filtros por estado, materia y fuero; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
+- [x] Almacén JSON provisorio (`07-arquitectura.md` §3.1) para poder usar las pantallas antes de Supabase.
+
+Lo que falta:
+
+- Supabase inicializado y autenticación con segundo factor.
+- Migraciones del modelo de datos (`06`) con RLS; semillas copiadas al abogado como ejemplos editables; **reemplazo del almacén JSON** (requisito para desplegar).
+- **Configuración**: catálogo de plazos, plantillas de escritos, materias, juzgados, dispositivos SAE.
+- Expedientes: partes, montos y fechas clave, etapas con transiciones e historial, **historia unificada** con todos los tipos de entrada y filtros, baja lógica y archivo.
 - **Editor de escritos** con versiones, importación y exportación Word/PDF, marcado de "presentado" (sin IA todavía).
 - Documentos con subida y extracción de texto.
-- **Motor de plazos** con tests, reglas parametrizadas y calendario de días inhábiles precargado.
+- Calendario de días inhábiles precargado para el motor de plazos (feriados, ferias según Acordada 840/26, asuetos).
 - Agenda: calendario, eventos, tareas, vencimientos creados desde la historia, calculadora de plazos.
 - Carga manual de actuaciones (texto y PDF). Recordatorios por correo.
 
-**Criterio de salida:** el abogado configura una plantilla de proceso propia, carga un expediente real con su historia, redacta y exporta un escrito, registra una notificación y obtiene el vencimiento correcto con explicación.
+**Criterio de salida:** el abogado configura un tipo de proceso propio, carga un expediente real con su historia, redacta y exporta un escrito, registra una notificación y obtiene el vencimiento correcto con explicación.
 
 ## Fase 2 — IA integrada en el expediente (4 a 5 semanas)
 
 - Pipeline de fragmentación y embeddings para historia, normas, guías, plantillas y corpus propio.
 - Búsqueda híbrida filtrada por agente y expediente.
-- **Constructor de agentes** con especialidades, tipos de proceso, guías de comportamiento, fuentes por ítem, modo de conocimiento; cinco agentes de ejemplo.
+- Completar el **constructor de agentes** (ya hecho en la Fase 1 en su parte de identidad y comportamiento) con fuentes por ítem, herramientas y panel de prueba.
 - **Selección de agentes por expediente**.
 - Chat con contexto; **Informe de estado** estructurado guardado en la historia.
 - Panel de IA en el editor de escritos (generar borrador, completar, reescribir, revisar requisitos).
@@ -41,7 +53,7 @@ Fases ordenadas para llegar a un sistema usable lo antes posible. Cada fase tien
 - **Extensión de navegador**: lectura de bandeja e historia, modos manual y automático, selectores versionados, "capturar esta página".
 - Flujo 0 completo: notificación → historia → análisis → plazos → aprobación → Agenda.
 - Alerta por falta de sincronización.
-- Guías: formato, carga, navegación, búsqueda, checklists activables, tabla etapa → guías en las plantillas.
+- Guías: formato, carga, navegación, búsqueda, checklists activables, tabla etapa → guías en los tipos de proceso.
 - Redacción de las 8 a 10 guías de ejemplo, con verificación de los puntos **[a confirmar]** ante fuentes oficiales.
 - Honorarios y gastos por expediente.
 

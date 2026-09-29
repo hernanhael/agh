@@ -2,14 +2,16 @@
 
 ## 1. Descripción
 
-El área de IA es donde el abogado **crea y configura** sus agentes expertos. Luego los **selecciona dentro de cada expediente** para que trabajen allí (ver `02-expedientes.md`, sección 2.6). Un agente es una configuración del abogado compuesta por:
+Los agentes expertos son **configuración del abogado**: se crean, editan y eliminan en **Configuración → Agentes**, junto con los tipos de proceso y el resto de sus catálogos. El **área IA** es donde se los usa: conversaciones, informes de estado y el historial de lo que pidió.
+
+Luego de crearlos, el abogado los **selecciona dentro de cada expediente** para que trabajen allí (ver `02-expedientes.md`, sección 2.6). Un agente es una configuración del abogado compuesta por:
 
 | Componente | Qué define |
 |---|---|
 | **Rol** | Qué hace y cómo se comporta: procesalista, redactor, analista, investigador. |
 | **Rama** | Área del derecho: Civil y Comercial en la primera versión; Laboral, Familia, Penal después. |
 | **Especialidad** | Materia o materias en las que es experto: consumidor, daños y perjuicios, prescripción, contratos, locaciones, sucesiones, ejecuciones y cobros. Lista editable por el abogado. |
-| **Tipos de proceso** | Plantillas de proceso en las que actúa (ordinario, ejecutivo, etc.) o todas. |
+| **Tipos de proceso** | Tipos de proceso en las que actúa (ordinario, ejecutivo, etc.) o todas. |
 | **Instrucciones** | Prompt de sistema guiado por bloques más instrucciones libres del abogado: jurisdicción, tono, formato, reglas de citación, **guías de comportamiento**. |
 | **Fuentes** | Exactamente qué puede consultar: normas cargadas, guías, plantillas de escritos, fallos propios, y la historia del expediente donde fue seleccionado. Nada más. |
 | **Herramientas** | Acciones que puede proponer: calcular plazo, crear tarea, crear vencimiento, buscar en la historia, generar escrito, informe de estado. |
@@ -33,7 +35,7 @@ El sistema trae estos agentes como punto de partida. El abogado puede editarlos,
 #### Analista de expediente
 - **Rol**: lee la historia del expediente y explica qué pasa. Es la base del **Informe de estado**.
 - **Responde**: resumen de una actuación nueva; clasificación; plazos que se abren (vía motor); qué quedó pendiente; advertencias (plazo por vencer, prueba no producida, escrito sin presentar); propuesta de próximos pasos; resumen cronológico; preparación de audiencia.
-- **Fuentes sugeridas**: historia del expediente, catálogo de plazos, guías, plantilla de proceso del expediente.
+- **Fuentes sugeridas**: historia del expediente, catálogo de plazos, guías, tipo de proceso del expediente.
 - **Herramientas**: clasificar actuación, crear vencimiento, crear tarea, cambiar etapa, informe de estado (todas como propuestas).
 
 #### Redactor de escritos
@@ -54,11 +56,11 @@ El sistema trae estos agentes como punto de partida. El abogado puede editarlos,
 #### Investigador de jurisprudencia y doctrina (v2)
 - Busca fallos en el corpus propio del abogado y, si él lo habilita, en dominios web que él liste. Solo cita lo que recuperó y puede enlazar.
 
-### 2.2 Constructor de agentes
+### 2.2 Constructor de agentes (Configuración → Agentes)
 
-Formulario para crear, editar o clonar agentes.
+Formulario para crear, editar, duplicar o borrar agentes. Los puntos 1, 2, 5 y 6 ya están implementados; las fuentes, las herramientas y el panel de prueba esperan al índice de fragmentos de la Fase 2.
 
-1. **Identidad**: nombre, descripción, ícono, rama, **especialidades**, **tipos de proceso** en los que actúa.
+1. **Identidad**: nombre, descripción, ícono, rama, **especialidades**, **tipos de proceso** en los que actúa (tomados del catálogo de tipos de proceso del abogado; sin ninguno marcado, actúa en todos).
 2. **Instrucciones guiadas**: bloques seleccionables (jurisdicción Tucumán, rol, especialidad, tono, formato de salida, reglas de citación, reglas de dominio cerrado) más un campo de **guías de comportamiento** libres del abogado (por ejemplo: "cuando detectes una cédula, siempre calculá el plazo con el catálogo y nunca lo estimes"; "no opines sobre estrategia, solo informá").
 3. **Fuentes**: selección explícita, ítem por ítem, de lo que el agente puede consultar: normas cargadas, colecciones de guías, plantillas de escritos, corpus propios (fallos, modelos), y "historia del expediente donde esté seleccionado" (activo por defecto). Sin fuentes asignadas, el agente solo ve la historia.
 4. **Herramientas**: casillas por herramienta; cada una explica qué hace y aclara que toda escritura es una propuesta.
@@ -66,9 +68,9 @@ Formulario para crear, editar o clonar agentes.
 6. **Modelo y parámetros**: modelo, temperatura (baja por defecto), longitud máxima.
 7. **Prueba**: panel para probar el agente con una pregunta sobre un expediente de ejemplo antes de guardar, mostrando cobertura y citas.
 
-### 2.3 Flujo de uso: crear en IA, seleccionar en el expediente, interactuar allí
+### 2.3 Flujo de uso: crear en Configuración, seleccionar en el expediente, interactuar allí
 
-1. El abogado crea o ajusta el agente en el área IA y le asigna fuentes y guías de comportamiento.
+1. El abogado crea o ajusta el agente en Configuración → Agentes y le asigna fuentes y guías de comportamiento.
 2. En un expediente, abre el panel "Agentes" y selecciona los que van a trabajar en esa causa. El sistema sugiere según materia y etapa; la decisión es del abogado.
 3. Desde el expediente pide un **Informe de estado**, chatea, analiza una actuación o redacta con el agente. Todo ocurre con la historia del expediente como contexto.
 4. Las propuestas del agente quedan pendientes de aprobación; lo aprobado entra en la historia, Agenda o Documentos con marca de origen.
@@ -142,8 +144,10 @@ Complementos técnicos: temperatura baja; contexto armado solo con fragmentos re
 
 ### MVP
 
-- [ ] Constructor de agentes con rol, rama, especialidades, tipos de proceso, instrucciones guiadas, guías de comportamiento, fuentes por ítem, herramientas, modo de conocimiento y modelo.
-- [ ] Cinco agentes de ejemplo editables (Procesalista, Analista, Redactor, Daños, Consumidor).
+- [x] Alta, edición, duplicado y baja de agentes desde Configuración, con rol, rama, especialidades, tipos de proceso, instrucciones, guías de comportamiento, modo de conocimiento y modelo.
+- [ ] Completar el constructor con fuentes por ítem, herramientas y panel de prueba (requiere el RAG).
+- [x] Cinco agentes de ejemplo editables (Procesalista, Analista, Redactor, Daños, Consumidor).
+- [x] Sugerencia de agentes por materia y tipo de proceso en la ficha del expediente.
 - [ ] Selección de agentes por expediente.
 - [ ] Informe de estado bajo demanda con salida estructurada, guardado en la historia.
 - [ ] Chat con contexto del expediente, transmisión en tiempo real, historial.

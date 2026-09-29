@@ -47,7 +47,7 @@ sequenceDiagram
     ING->>ING: Hash y deduplicación
     ING->>EXP: Vincular por número/año/juzgado (o proponer alta)
     EXP->>EXP: Entrada en la historia con origen SAE
-    EXP->>AN: Analizar entrada + historia + plantilla del expediente
+    EXP->>AN: Analizar entrada + historia + tipo de proceso del expediente
     AN->>PL: calcular_plazo(fecha notificación, acto del catálogo)
     PL-->>AN: vencimiento + explicación
     AN->>SUG: Clasificación, resumen, vencimientos, tareas, cambio de etapa (con evidencia)
@@ -67,7 +67,7 @@ Igual al Flujo 0 desde la entrada en la historia, con origen "carga manual". El 
 
 Disparador: cambia la etapa del expediente (manual o por aprobación de una sugerencia).
 
-1. El sistema lee la etapa en la plantilla de proceso del expediente: guías sugeridas, checklist, plazos típicos, escritos típicos, agentes sugeridos.
+1. El sistema lee la etapa en el tipo de proceso del expediente: guías sugeridas, checklist, plazos típicos, escritos típicos, agentes sugeridos.
 2. En la ficha aparece el bloque **"En esta etapa"** con esos elementos.
 3. Si el abogado activa el checklist, los ítems se convierten en tareas con plazos relativos calculados por el motor.
 4. "Preguntar" abre un chat con el agente sugerido, con el expediente y la guía como contexto. Si el agente sugerido no está seleccionado en el expediente, se ofrece seleccionarlo.
@@ -108,7 +108,7 @@ Reglas:
 
 Disparador: chat con un agente seleccionado en el expediente.
 
-- El agente recibe un **resumen estructurado** del expediente en cada turno: carátula, juzgado, plantilla y etapa, materia, partes, últimas cinco entradas de la historia, vencimientos abiertos, tareas abiertas.
+- El agente recibe un **resumen estructurado** del expediente en cada turno: carátula, juzgado, tipo de proceso y etapa, materia, partes, últimas cinco entradas de la historia, vencimientos abiertos, tareas abiertas.
 - Para detalle, `buscar_en_historia` recupera fragmentos filtrados por `case_id`.
 - Preguntas típicas: "¿qué prueba ofreció la contraria?", "¿cuándo se notificó la sentencia?", "resumime el expediente para una reunión con el cliente".
 - Las conversaciones quedan asociadas al expediente y pueden fijarse como entrada de la historia.
@@ -135,7 +135,7 @@ sequenceDiagram
     participant VER as Verificador de citas
 
     Abogado->>EXP: Pedir informe de estado (elige agente)
-    EXP->>AG: Resumen estructurado + plantilla y etapa
+    EXP->>AG: Resumen estructurado + tipo de proceso y etapa
     AG->>RAG: buscar_en_historia(últimas actuaciones, escritos, pendientes)
     RAG-->>AG: fragmentos con referencia
     AG->>PL: listar_plazos_activos(case_id)
@@ -162,7 +162,7 @@ Todas las herramientas de escritura crean **propuestas**, no registros definitiv
 | `buscar_en_historia` | lectura | consulta, `case_id`, filtros (tipo, origen, fechas) | fragmentos con referencia | Todos |
 | `buscar_fuentes` | lectura | consulta, capa (normativa / guías / corpus propio) | fragmentos con referencia, solo de fuentes asignadas | Todos |
 | `resumen_expediente` | lectura | `case_id` | resumen estructurado | Analista, Redactor |
-| `sugerir_guia` | lectura | `case_id`, etapa | guías y checklists de la plantilla | Procesalista, Analista |
+| `sugerir_guia` | lectura | `case_id`, etapa | guías y checklists del tipo de proceso | Procesalista, Analista |
 | `informe_estado` | propuesta | `case_id` | informe estructurado guardado en la historia; propuestas como sugerencias | Analista, especialistas |
 | `clasificar_actuacion` | propuesta | `entry_id`, tipo, resumen | sugerencia | Analista |
 | `crear_vencimiento` | propuesta | `case_id`, acto, fecha base, resultado del motor, evidencia | sugerencia | Procesalista, Analista |
@@ -190,7 +190,7 @@ Todas las herramientas de escritura crean **propuestas**, no registros definitiv
 - **Actuación ambigua**: el Analista propone la clasificación con confianza baja y pide confirmación en vez de proponer un vencimiento.
 - **Fecha de notificación desconocida**: la sugerencia de vencimiento se crea sin fecha y con la tarea "confirmar fecha de notificación en el SAE".
 - **Acto no catalogado**: el agente no calcula; propone agregar el acto al catálogo del abogado.
-- **Conflicto de etapa**: si la etapa propuesta no es una transición prevista en la plantilla, se muestra con advertencia.
+- **Conflicto de etapa**: si la etapa propuesta no es una transición prevista en el tipo de proceso, se muestra con advertencia.
 - **Expediente sin agentes seleccionados**: las entradas se guardan igual; se ofrece seleccionar un agente para analizar.
 - **Expediente sin fuentes asignadas al agente**: el agente trabaja solo con la historia y lo dice.
 - **Varios expedientes en una consulta**: solo con pedido explícito del abogado y con aviso.

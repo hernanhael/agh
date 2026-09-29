@@ -13,7 +13,7 @@ Las guías cumplen tres funciones:
 
 1. **Consulta directa** del abogado (y de futuros colaboradores).
 2. **Fuente de conocimiento de los agentes** de IA vía RAG (documento 03). Una guía solo la ve un agente si el abogado se la asignó como fuente al configurarlo; no hay acceso implícito.
-3. **Asistente de trámite dentro del expediente**: cada guía puede tener un checklist que se instancia en una causa según la etapa de su plantilla de proceso (documentos 02 y 05).
+3. **Asistente de trámite dentro del expediente**: cada guía puede tener un checklist que se instancia en una causa según la etapa de su tipo de proceso (documentos 02 y 05).
 
 Como toda la configuración del sistema, las guías son **del abogado**: las de ejemplo que trae el proyecto se marcan como tales y puede editarlas, reescribirlas o borrarlas.
 
@@ -109,7 +109,7 @@ Las 8 a 10 guías semilla del MVP salen de esta lista. Los ítems con **[a confi
 
 ### 2.5 Vinculación con etapas del expediente
 
-La correspondencia etapa a guías sugeridas se configura **dentro de cada plantilla de proceso** (`02-expedientes.md`, sección 2.1): cada etapa lista sus guías, checklist, plazos típicos, escritos típicos y agentes sugeridos. Ejemplo para la plantilla de ordinario de ejemplo:
+La correspondencia etapa a guías sugeridas se configura **dentro de cada tipo de proceso** (`02-expedientes.md`, sección 2.1): cada etapa lista sus guías, checklist, plazos típicos, escritos típicos y agentes sugeridos. Ejemplo para la plantilla de ordinario de ejemplo:
 
 | Tipo de proceso | Etapa | Guías sugeridas |
 |---|---|---|
@@ -142,7 +142,7 @@ La correspondencia etapa a guías sugeridas se configura **dentro de cada planti
 - [ ] Lectura con navegación por colección, rama, proceso y etapa.
 - [ ] Búsqueda léxica y semántica.
 - [ ] Checklist activable en un expediente, con ítems convertidos a tareas y seguimiento de cumplimiento.
-- [ ] Guías sugeridas por etapa configuradas en las plantillas de proceso.
+- [ ] Guías sugeridas por etapa configuradas en los tipos de proceso.
 - [ ] Asignación de guías como fuente por agente (desde el constructor de agentes).
 - [ ] Entre 8 y 10 guías semilla: Mediación, Inicio de demanda por el SAE, Tasa de justicia, Bono y aportes, Notificaciones, Presentación de escritos, Feria, Honorarios, Estructura de procesos Ley 9531, Plazos y recursos.
 - [ ] Panel de guías vencidas o marcadas para revisión.
