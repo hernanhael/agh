@@ -12,6 +12,9 @@
   --background: #fbfaf8;
   --foreground: #1a1a19;
   --superficie: #ffffff;
+  /* Riel de navegación: un tono de papel más hondo que el fondo, para que la
+     barra se retire y el área de trabajo quede adelante. */
+  --barra: oklch(0.962 0.005 75);
   --linea: oklch(0.905 0.004 70);
   --linea-fuerte: oklch(0.84 0.005 70);
   --acento: oklch(0.45 0.1 258);
@@ -24,6 +27,7 @@
     --background: #0c0d0e;
     --foreground: #e9e9e7;
     --superficie: #141516;
+    --barra: oklch(0.145 0.004 260);
     --linea: oklch(0.275 0.004 260);
     --linea-fuerte: oklch(0.36 0.006 260);
     --acento: oklch(0.74 0.1 258);
@@ -36,6 +40,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-superficie: var(--superficie);
+  --color-barra: var(--barra);
   --color-linea: var(--linea);
   --color-linea-fuerte: var(--linea-fuerte);
   --color-acento: var(--acento);

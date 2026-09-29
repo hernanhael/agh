@@ -11,7 +11,7 @@ Fases ordenadas para llegar a un sistema usable lo antes posible. Cada fase tien
 
 Lo hecho hasta ahora:
 
-- [x] Proyecto Next.js inicializado; layout con las cuatro áreas, Configuración y la vista Hoy.
+- [x] Proyecto Next.js inicializado; **cáscara de navegación** con el riel lateral de áreas, Configuración y la vista Hoy (`07-arquitectura.md` §3.4).
 - [x] **Motor de plazos** con tests y reglas parametrizadas (`lib/plazos`).
 - [x] **Normalización de texto** con tests (`lib/formato`, doc `10`), aplicada al guardar en todas las altas.
 - [x] **Configuración → Estudio**: datos del abogado y preferencias.

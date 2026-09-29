@@ -18,7 +18,7 @@
 | Correo | Proveedor del Marketplace de Vercel (a elegir en la fase de código) | Recordatorios y alertas. |
 | Interfaz | Tailwind CSS + componentes accesibles, íconos de **lucide-react** | Rapidez de desarrollo, tema claro/oscuro; un solo juego de íconos coherente, importados de a uno para no cargar el resto. |
 | Tipografía | **IBM Plex Sans** en toda la aplicación | Una sola familia: la jerarquía se construye con peso, tamaño y color, no con familias distintas. Tiene versión variable, así que todo el rango de pesos viene en un archivo. Cubre el castellano con tildes y ñ, y se sirve autoalojada por `next/font`, sin pedidos a Google en tiempo de ejecución. |
-| Sistema visual | Fondo de papel apenas cálido, superficies un tono más claras, bordes finos, un acento de azul tinta y colores de estado semánticos (rojo reservado a "paralizado") | Los expedientes son el contenido; el cromo tiene que desaparecer. Definido como variables CSS en `globals.css` y expuesto a Tailwind, para cambiarlo en un solo lugar. |
+| Sistema visual | Fondo de papel apenas cálido, superficies un tono más claras, bordes finos, un acento de azul tinta reservado a la selección y a la acción principal, y colores de estado semánticos (rojo reservado a "paralizado") | Los expedientes son el contenido; el cromo tiene que desaparecer. Definido como variables CSS en `globals.css` y expuesto a Tailwind, para cambiarlo en un solo lugar. |
 
 ## 2. Diagrama de componentes
 
@@ -137,6 +137,22 @@ El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los compone
 ### 3.3 Normalización de texto
 
 `lib/formato/` es un módulo puro que formatea lo que se carga según qué es el dato (nombre propio, título, texto libre). Los repositorios lo aplican al guardar, de modo que cualquier vía de carga futura —el importador del SAE, una carga masiva— quede formateada igual sin repetir la regla. Detalle en `10-normalizacion-de-texto.md`.
+
+### 3.4 Cáscara de navegación
+
+`app/layout.tsx` monta una sola cáscara para toda la aplicación: la barra lateral (`components/Nav.tsx`) fija a la izquierda y el área de trabajo desplazándose al lado.
+
+La barra es un **riel de íconos** de 128 px: un ícono de 32 px por área con el rótulo debajo, y Configuración anclada abajo, separada por una línea. Ocupa poco ancho porque el contenido es el expediente, pero cada área queda igualmente nombrada: no depende de que el abogado reconozca el ícono.
+
+Reglas del riel:
+
+- **Íconos y rótulos en el gris secundario de la aplicación** (`text-zinc-600 dark:text-zinc-400`, el mismo de las descripciones y los metadatos): se leen sin esfuerzo y no compiten con la carátula.
+- **El azul de acento marca una sola cosa: el área abierta.** El ítem activo va en `text-acento` sobre `bg-acento-suave`. Al pasar el mouse aparece solo el fondo teñido, sin teñir la tinta, para que el azul no signifique dos cosas distintas.
+- Un área sigue abierta desde sus subrutas: en `/expedientes/12` el ítem Expedientes queda marcado.
+- El riel se apoya en su propio tono de papel, `--barra`, un paso más hondo que el fondo, para retirarse respecto del área de trabajo.
+- El ítem activo lleva `aria-current="page"`, y cada ícono es `aria-hidden`: lo que anuncia el lector de pantalla es el rótulo, no el dibujo.
+
+Dentro de un área, `components/SubNav.tsx` resuelve la navegación horizontal entre secciones; hoy solo la usa Configuración.
 
 ## 4. Motor de plazos
 
