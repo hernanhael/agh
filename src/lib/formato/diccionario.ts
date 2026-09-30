@@ -136,6 +136,7 @@ export const SIGLAS: ReadonlyMap<string, string> = new Map([
   ["PJT", "PJT"],
   // Judicial y normativo
   ["SAE", "SAE"],
+  ["OGA", "OGA"],
   ["CPCC", "CPCC"],
   ["CCYC", "CCyC"],
   ["CSJT", "CSJT"],
@@ -152,6 +153,9 @@ export const SIGLAS: ReadonlyMap<string, string> = new Map([
  * convertir la abreviatura "art." (artículo) en la aseguradora "ART".
  */
 export const SIGLAS_INSENSIBLES: ReadonlySet<string> = new Set([
+  // La Oficina de Gestión Asociada se escribe suelta en el campo del
+  // expediente ("oga civil capital") y no es una palabra del castellano.
+  "OGA",
   "SA",
   "SAS",
   "SRL",
@@ -301,6 +305,8 @@ export const ACENTOS: Readonly<Record<string, string>> = {
   sali: "Salí",
   tafi: "Tafí",
   tucuman: "Tucumán",
+  // Denominaciones de juzgados y fueros: "Juzgado Civil y Comercial Común"
+  comun: "Común",
   // Objeto de la carátula y materias
   absolucion: "Absolución",
   accion: "Acción",

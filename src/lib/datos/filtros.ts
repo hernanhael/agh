@@ -1,5 +1,5 @@
 import { normalizarParaBuscar, numeroExpediente } from "@/lib/formato";
-import { ESTADOS_EXPEDIENTE, type EstadoExpediente, type Expediente } from "./tipos";
+import { ESTADOS_EXPEDIENTE, type Expediente } from "./tipos";
 
 /**
  * Búsqueda y filtrado de expedientes.
@@ -20,6 +20,22 @@ export function identificador(expediente: Expediente): string {
 }
 
 /**
+ * Nombre del juzgado: tipo y nominación, "Civil y Comercial Común VI".
+ *
+ * Es también el valor por el que se filtra, así que se arma en un solo lugar:
+ * si el listado y el filtro lo armaran cada uno por su cuenta, alcanzaría un
+ * espacio de diferencia para que el desplegable no encontrara nada.
+ */
+export function nombreJuzgado(expediente: Expediente): string {
+  return [expediente.juzgadoTipo, expediente.juzgadoNumero].filter(Boolean).join(" ");
+}
+
+/** Oficina de Gestión Asociada del expediente, vacía si no se cargó. */
+export function oficinaGestion(expediente: Expediente): string {
+  return expediente.oficinaGestion ?? "";
+}
+
+/**
  * Texto sobre el que se busca: número, carátula, partes, objeto y materia,
  * todo reducido a la forma comparable.
  */
@@ -33,6 +49,8 @@ function textoBuscable(expediente: Expediente): string {
       expediente.demandado,
       expediente.objeto,
       expediente.materia,
+      nombreJuzgado(expediente),
+      oficinaGestion(expediente),
     ].join(" "),
   );
 }
@@ -57,9 +75,20 @@ export interface Filtros {
   estado: string;
   materia: string;
   fuero: string;
+  /** Juzgado con su nominación, tal como lo devuelve `nombreJuzgado`. */
+  juzgado: string;
+  /** Oficina de Gestión Asociada. */
+  oga: string;
 }
 
-export const FILTROS_VACIOS: Filtros = { consulta: "", estado: "", materia: "", fuero: "" };
+export const FILTROS_VACIOS: Filtros = {
+  consulta: "",
+  estado: "",
+  materia: "",
+  fuero: "",
+  juzgado: "",
+  oga: "",
+};
 
 /** Si hay algún filtro puesto (para mostrar el conteo y el botón de limpiar). */
 export function hayFiltros(filtros: Filtros): boolean {
@@ -67,23 +96,29 @@ export function hayFiltros(filtros: Filtros): boolean {
     filtros.consulta.trim() !== "" ||
     filtros.estado !== "" ||
     filtros.materia !== "" ||
-    filtros.fuero !== ""
+    filtros.fuero !== "" ||
+    filtros.juzgado !== "" ||
+    filtros.oga !== ""
   );
 }
 
 /**
- * Aplica la búsqueda y los tres filtros. Un filtro vacío no filtra, y los de
- * materia y fuero comparan sin tildes ni mayúsculas por las mismas razones que
- * la búsqueda.
+ * Aplica la búsqueda y los filtros. Un filtro vacío no filtra, y los de
+ * materia, fuero, juzgado y OGA comparan sin tildes ni mayúsculas por las
+ * mismas razones que la búsqueda.
  */
 export function aplicarFiltros(expedientes: Expediente[], filtros: Filtros): Expediente[] {
   const materia = normalizarParaBuscar(filtros.materia);
   const fuero = normalizarParaBuscar(filtros.fuero);
+  const juzgado = normalizarParaBuscar(filtros.juzgado);
+  const oga = normalizarParaBuscar(filtros.oga);
 
   return expedientes.filter((expediente) => {
     if (filtros.estado && expediente.estado !== filtros.estado) return false;
     if (materia && normalizarParaBuscar(expediente.materia) !== materia) return false;
     if (fuero && normalizarParaBuscar(expediente.fuero) !== fuero) return false;
+    if (juzgado && normalizarParaBuscar(nombreJuzgado(expediente)) !== juzgado) return false;
+    if (oga && normalizarParaBuscar(oficinaGestion(expediente)) !== oga) return false;
     return coincide(expediente, filtros.consulta);
   });
 }
@@ -106,6 +141,8 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
   estados: OpcionFiltro[];
   materias: OpcionFiltro[];
   fueros: OpcionFiltro[];
+  juzgados: OpcionFiltro[];
+  ogas: OpcionFiltro[];
 } {
   const contar = (valores: string[]): Map<string, number> => {
     const cuenta = new Map<string, number>();
@@ -119,9 +156,17 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
   const estados = contar(expedientes.map((expediente) => expediente.estado));
   const materias = contar(expedientes.map((expediente) => expediente.materia));
   const fueros = contar(expedientes.map((expediente) => expediente.fuero));
+  const juzgados = contar(expedientes.map(nombreJuzgado));
+  const ogas = contar(expedientes.map(oficinaGestion));
 
   const alfabetico = (a: OpcionFiltro, b: OpcionFiltro) =>
     a.etiqueta.localeCompare(b.etiqueta, "es");
+
+  /** Los valores libres se ofrecen como vinieron, ordenados alfabéticamente. */
+  const listar = (cuenta: Map<string, number>): OpcionFiltro[] =>
+    [...cuenta.entries()]
+      .map(([valor, cantidad]) => ({ valor, etiqueta: valor, cantidad }))
+      .sort(alfabetico);
 
   return {
     // Los estados van en el orden del proceso, no alfabético.
@@ -130,16 +175,9 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
       etiqueta: estado.etiqueta,
       cantidad: estados.get(estado.valor) ?? 0,
     })),
-    materias: [...materias.entries()]
-      .map(([valor, cantidad]) => ({ valor, etiqueta: valor, cantidad }))
-      .sort(alfabetico),
-    fueros: [...fueros.entries()]
-      .map(([valor, cantidad]) => ({ valor, etiqueta: valor, cantidad }))
-      .sort(alfabetico),
+    materias: listar(materias),
+    fueros: listar(fueros),
+    juzgados: listar(juzgados),
+    ogas: listar(ogas),
   };
-}
-
-/** Etiqueta legible de un estado. */
-export function etiquetaEstado(estado: EstadoExpediente | string): string {
-  return ESTADOS_EXPEDIENTE.find((candidato) => candidato.valor === estado)?.etiqueta ?? estado;
 }

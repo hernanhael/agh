@@ -7,6 +7,7 @@ import {
   crearExpediente,
   eliminarExpediente,
   type CentroJudicial,
+  type ClaseExpediente,
   type EntradaExpediente,
   type EstadoExpediente,
   type RolCliente,
@@ -32,6 +33,15 @@ function entrada(datos: FormData): EntradaExpediente {
     rolCliente: texto(datos, "rolCliente") as RolCliente,
     estado: texto(datos, "estado") as EstadoExpediente,
     notas: texto(datos, "notas"),
+    juzgadoTipo: texto(datos, "juzgadoTipo"),
+    juzgadoNumero: texto(datos, "juzgadoNumero"),
+    oficinaGestion: texto(datos, "oficinaGestion"),
+    clase: texto(datos, "clase") as ClaseExpediente,
+    ultimoMovimiento: texto(datos, "ultimoMovimiento"),
+    caducidadDeclarada: texto(datos, "caducidadDeclarada"),
+    audienciaTipo: texto(datos, "audienciaTipo"),
+    audienciaFecha: texto(datos, "audienciaFecha"),
+    audienciaHora: texto(datos, "audienciaHora"),
   };
 }
 

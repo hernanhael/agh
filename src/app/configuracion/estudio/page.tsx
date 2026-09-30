@@ -67,7 +67,7 @@ export default async function EstudioPage({
           </Campo>
         </div>
 
-        <div className="grid gap-4 border-t border-zinc-200 pt-6 sm:grid-cols-2 dark:border-zinc-800">
+        <div className="grid gap-4 border-t border-linea pt-6 sm:grid-cols-2">
           <Campo
             etiqueta="Centro judicial habitual"
             ayuda="Se propone al dar de alta un expediente."
@@ -99,7 +99,7 @@ export default async function EstudioPage({
           </Campo>
         </div>
 
-        <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <div className="border-t border-linea pt-6">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
             Presentación del texto
           </h2>
@@ -128,7 +128,7 @@ export default async function EstudioPage({
           </label>
         </div>
 
-        <div className="flex justify-end border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <div className="flex justify-end border-t border-linea pt-6">
           <button type="submit" className={claseBotonPrimario}>
             Guardar
           </button>

@@ -128,3 +128,35 @@ export function diaHabilOMismo(
     ? fecha
     : siguienteHabil(fecha, centroJudicial, calendario);
 }
+
+/** Último día del mes de una fecha: 28, 29, 30 o 31. */
+function ultimoDiaDelMes(y: number, m: number): number {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * Suma (o resta, con n negativo) meses calendario.
+ *
+ * Si el día no existe en el mes de destino, se usa el último de ese mes
+ * (31/03 + 1 mes = 30/04), como manda el artículo 6 del Código Civil y
+ * Comercial para los plazos contados por meses. Es el cómputo que necesita la
+ * caducidad de instancia, que corre por meses corridos y no por días hábiles.
+ */
+export function sumarMeses(fecha: FechaISO, n: number): FechaISO {
+  const { y, m, d } = partes(fecha);
+  const destino = new Date(Date.UTC(y, m - 1 + n, 1));
+  const anio = destino.getUTCFullYear();
+  const mes = destino.getUTCMonth() + 1;
+  return deTimestamp(Date.UTC(anio, mes - 1, Math.min(d, ultimoDiaDelMes(anio, mes))));
+}
+
+/** Días calendario de `desde` a `hasta`. Negativo si `hasta` ya pasó. */
+export function diasEntre(desde: FechaISO, hasta: FechaISO): number {
+  return Math.round((aTimestamp(hasta) - aTimestamp(desde)) / 86_400_000);
+}
+
+/** Formatea 'YYYY-MM-DD' como 'DD/MM/AAAA' para mostrar en pantalla. */
+export function formatoFecha(fecha: FechaISO): string {
+  const { y, m, d } = partes(fecha);
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
+}

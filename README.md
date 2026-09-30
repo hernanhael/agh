@@ -2,7 +2,7 @@
 
 Plataforma para asistir al abogado litigante durante la tramitación del proceso judicial en la **Provincia de Tucumán (Argentina)**. El expediente es el eje: su historia se construye dentro de la app (notificaciones traídas del Portal del SAE, escritos redactados allí mismo, documentos, eventos) y agentes de IA configurados por el abogado lo asisten en cada etapa, en dominio cerrado sobre esa historia y las fuentes que él les dio.
 
-**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros, alta con tipo de proceso, ficha, edición, baja). Pendiente para desplegar: Supabase y autenticación — los datos viven hoy en un archivo JSON local (`docs/07-arquitectura.md` §3.1).
+**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros por juzgado, OGA, estado, materia y fuero; alta con tipo de proceso; ficha; edición; baja). Primera regla de derecho procesal aplicada: la **caducidad de instancia**, que el listado informa con un semáforo —en trámite, para caducidad a los seis meses (tres en los incidentes), caduco— y la ficha explica con su cómputo (`docs/02-expedientes.md` §2.11). Pendiente para desplegar: Supabase y autenticación — los datos viven hoy en un archivo JSON local (`docs/07-arquitectura.md` §3.1).
 
 ## Documento de diseño
 

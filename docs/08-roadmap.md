@@ -11,13 +11,14 @@ Fases ordenadas para llegar a un sistema usable lo antes posible. Cada fase tien
 
 Lo hecho hasta ahora:
 
-- [x] Proyecto Next.js inicializado; **cáscara de navegación** con el riel lateral de áreas, Configuración y la vista Hoy (`07-arquitectura.md` §3.4).
+- [x] Proyecto Next.js inicializado; **cáscara de navegación** con el riel lateral de áreas, Configuración y la vista Hoy (`07-arquitectura.md` §3.5).
 - [x] **Motor de plazos** con tests y reglas parametrizadas (`lib/plazos`).
 - [x] **Normalización de texto** con tests (`lib/formato`, doc `10`), aplicada al guardar en todas las altas.
 - [x] **Configuración → Estudio**: datos del abogado y preferencias.
 - [x] **Configuración → Tipos de proceso**: alta, edición, desactivación y baja, con etapas; nueve ejemplos editables.
 - [x] **Configuración → Agentes**: alta, edición, duplicado y baja; cinco ejemplos editables.
-- [x] **Expedientes**: listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y filtros por estado, materia y fuero; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
+- [x] **Expedientes**: listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y filtros por juzgado, OGA, estado, materia y fuero; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
+- [x] **Caducidad de instancia** con tests (`lib/procesal`, `02-expedientes.md` §2.11): semáforo en el listado y en la ficha —en trámite, para caducidad a los seis meses (tres en incidentes), caduco— y radicación del expediente (juzgado, nominación, OGA) con la audiencia fijada.
 - [x] Almacén JSON provisorio (`07-arquitectura.md` §3.1) para poder usar las pantallas antes de Supabase.
 
 Lo que falta:
@@ -85,10 +86,10 @@ Lista consolidada de los puntos **[a confirmar]** repartidos en los documentos:
 2. Plazo de gracia: existencia, artículo y alcance en la Ley 9531.
 3. Nomenclatura exacta de los tipos de proceso y etapas en la Ley 9531 (¿existe el proceso sumario?; audiencia preliminar, vista de causa, monitorio).
 4. Plazos concretos del catálogo (contestación, excepciones, oposición monitoria, revocatoria, apelación, agravios, casación).
-5. Caducidad de instancia: plazos.
+5. Caducidad de instancia: plazos. El sistema ya aplica **seis meses en el principal y tres en los incidentes** (`02-expedientes.md` §2.11), indicados por el abogado; falta confirmarlos contra el texto vigente, junto con qué actos interrumpen el plazo y en qué estados no corre.
 6. Interacción entre la mediación obligatoria (Ley 7844) y la Ley 9531.
 7. Tasa de justicia: alícuota, base, medio de pago ante Rentas Tucumán, exenciones.
 8. Bono del Colegio de Abogados de Tucumán y aportes a la Caja de Previsión: montos y oportunidad.
-9. Denominaciones actuales de los fueros y listado de juzgados por centro judicial, con el nombre exacto que usa el Portal.
+9. Denominaciones actuales de los fueros, listado de juzgados por centro judicial y **Oficinas de Gestión Asociada** con los juzgados que atiende cada una, con el nombre exacto que usa el Portal.
 10. Arancel de mediación.
 11. Términos de uso del Portal del SAE respecto de accesos automatizados (relevante solo para el robot).

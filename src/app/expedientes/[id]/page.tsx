@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChipProcesal } from "@/components/SituacionProcesal";
 import {
   Aviso,
   claseBotonPeligro,
+  claseEtapa,
   claseTarjeta,
   Encabezado,
   Marca,
@@ -10,16 +12,22 @@ import {
 } from "@/components/ui";
 import {
   CENTROS_JUDICIALES,
+  CLASES_EXPEDIENTE,
   ESTADOS_EXPEDIENTE,
+  hoy,
   identificador,
   listarMaterias,
+  listarRadicaciones,
   listarTiposProceso,
   listarTiposProcesoActivos,
+  nombreJuzgado,
   obtenerEstudio,
   obtenerExpediente,
   ROLES_CLIENTE,
   sugerirAgentes,
 } from "@/lib/datos";
+import { formatoFecha } from "@/lib/plazos";
+import { audienciaFijada, claseDeExpediente, situacionCaducidad } from "@/lib/procesal";
 import { borrarExpediente, guardarExpediente } from "../acciones";
 import { FormularioExpediente } from "../FormularioExpediente";
 
@@ -43,16 +51,21 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
   const expediente = await obtenerExpediente(id);
   if (!expediente) notFound();
 
-  const [tipos, tiposActivos, materias, estudio, agentes] = await Promise.all([
+  const [tipos, tiposActivos, materias, radicaciones, estudio, agentes] = await Promise.all([
     listarTiposProceso(),
     listarTiposProcesoActivos(),
     listarMaterias(),
+    listarRadicaciones(),
     obtenerEstudio(),
     sugerirAgentes(expediente.tipoProcesoId, expediente.materia),
   ]);
 
   const tipo = tipos.find((candidato) => candidato.id === expediente.tipoProcesoId);
   const { error, hecho } = mensajes(await searchParams);
+  const dia = hoy();
+  const situacion = situacionCaducidad(expediente, dia);
+  const audiencia = audienciaFijada(expediente, dia);
+  const juzgado = nombreJuzgado(expediente);
   // Si el tipo de proceso está desactivado, se agrega igual a la lista para no
   // cambiárselo sin querer al guardar.
   const tiposDisponibles =
@@ -81,7 +94,38 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
           <span className="text-xs text-zinc-500 dark:text-zinc-500">
             desde {expediente.etapaDesde}
           </span>
+          <ChipProcesal situacion={situacion} yaExplicado className="ml-auto" />
         </div>
+
+        {/*
+          Situación frente a la caducidad de instancia. En la ficha se explica
+          el cómputo —de qué fecha se cuenta, cuándo se cumple el plazo y cuánto
+          falta—, porque es lo que el abogado necesita para decidir si impulsa el
+          expediente hoy (docs/02-expedientes.md §2.11).
+
+          El único color es el del semáforo: la explicación va en gris, igual que
+          en el listado.
+        */}
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <span>{situacion.detalle}</span>
+          {situacion.vence ? (
+            <>
+              <span className="px-1.5 text-linea-fuerte">·</span>
+              {situacion.dias !== undefined && situacion.dias > 0
+                ? `caduca el ${formatoFecha(situacion.vence)}, en ${situacion.dias} días`
+                : `el plazo se cumplió el ${formatoFecha(situacion.vence)}`}
+            </>
+          ) : null}
+        </p>
+
+        {audiencia ? (
+          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+            {audiencia.texto}
+            {audiencia.pasada ? (
+              <span className="text-zinc-500 dark:text-zinc-500"> (ya pasó)</span>
+            ) : null}
+          </p>
+        ) : null}
 
         {tipo && tipo.etapas.length > 0 ? (
           <ol className="mt-3 flex flex-wrap items-center gap-1 text-xs">
@@ -94,7 +138,7 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
                     className={
                       actual
                         ? "rounded bg-zinc-900 px-2 py-1 font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
-                        : "rounded bg-zinc-100 px-2 py-1 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                        : claseEtapa
                     }
                   >
                     {etapa.nombre}
@@ -105,16 +149,20 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
           </ol>
         ) : null}
 
-        <dl className="mt-4 grid gap-x-6 gap-y-2 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-2 dark:border-zinc-800">
+        <dl className="mt-4 grid gap-x-6 gap-y-2 border-t border-linea pt-4 text-sm sm:grid-cols-2">
           {[
             ["Actor", expediente.actor],
             ["Demandado", expediente.demandado || "—"],
             ["Objeto", expediente.objeto || "—"],
             ["Materia", expediente.materia || "—"],
+            ["Juzgado", juzgado || "—"],
+            ["Oficina de Gestión Asociada", expediente.oficinaGestion || "—"],
             ["Centro judicial", etiqueta(CENTROS_JUDICIALES, expediente.centroJudicial)],
             ["Fuero", expediente.fuero],
             ["Rol del cliente", etiqueta(ROLES_CLIENTE, expediente.rolCliente)],
             ["Estado", etiqueta(ESTADOS_EXPEDIENTE, expediente.estado)],
+            ["Clase", etiqueta(CLASES_EXPEDIENTE, claseDeExpediente(expediente))],
+            ["Último movimiento", formatoFecha(situacion.desde)],
           ].map(([titulo, valor]) => (
             <div key={titulo}>
               <dt className="text-xs text-zinc-500 dark:text-zinc-500">{titulo}</dt>
@@ -124,7 +172,7 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
         </dl>
 
         {expediente.notas ? (
-          <p className="mt-4 whitespace-pre-line border-t border-zinc-200 pt-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+          <p className="mt-4 whitespace-pre-line border-t border-linea pt-4 text-sm text-zinc-600 dark:text-zinc-400">
             {expediente.notas}
           </p>
         ) : null}
@@ -159,18 +207,20 @@ export default async function ExpedientePage({ params, searchParams }: PageProps
         <summary className="cursor-pointer text-sm font-medium text-zinc-900 dark:text-zinc-50">
           Editar expediente
         </summary>
-        <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="mt-4 border-t border-linea pt-4">
           <FormularioExpediente
             expediente={expediente}
             tiposProceso={tiposDisponibles}
             materias={materias}
+            radicaciones={radicaciones}
             centroJudicialHabitual={estudio.centroJudicialHabitual}
+            hoy={dia}
             acentuar={estudio.correccionDeTildes}
             accion={guardarExpediente}
             textoBoton="Guardar cambios"
           />
         </div>
-        <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="mt-4 border-t border-linea pt-4">
           <form action={borrarExpediente}>
             <input type="hidden" name="id" value={expediente.id} />
             <button type="submit" className={claseBotonPeligro}>

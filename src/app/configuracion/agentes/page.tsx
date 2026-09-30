@@ -1,7 +1,16 @@
 import {
+  claseColumnaEstado,
+  claseNombreRegistro,
+  claseRejillaRegistro,
+  Registro,
+  Rotulo,
+  Semaforo,
+} from "@/components/Registro";
+import {
   Aviso,
   claseBotonPeligro,
   claseBotonSecundario,
+  claseSeparador,
   claseTarjeta,
   Encabezado,
   Marca,
@@ -11,8 +20,10 @@ import {
 import {
   listarAgentes,
   listarTiposProceso,
+  MODOS_CONOCIMIENTO,
   obtenerEstudio,
   ROLES_AGENTE,
+  type Agente,
   type TipoProceso,
 } from "@/lib/datos";
 import { borrarAgente, duplicarAgente, guardarAgente, nuevoAgente } from "../acciones";
@@ -27,6 +38,22 @@ function nombresDeTipos(ids: string[], tipos: TipoProceso[]): string {
   return ids
     .map((id) => tipos.find((tipo) => tipo.id === id)?.nombre ?? "—")
     .join(" · ");
+}
+
+/**
+ * Modo de conocimiento como estado del registro: el dominio cerrado es el modo
+ * por defecto y se informa en gris; el conocimiento general va en amarillo,
+ * porque es el que permite al agente hablar de lo que no está en sus fuentes
+ * (docs/03-ia-agentes.md §1). El detalle del catálogo explica cada uno al pasar
+ * el mouse.
+ */
+function estadoDelModo(agente: Agente) {
+  const modo = MODOS_CONOCIMIENTO.find((candidato) => candidato.valor === agente.modoConocimiento);
+  return {
+    tono: agente.modoConocimiento === "general" ? ("aviso" as const) : ("neutro" as const),
+    etiqueta: modo?.etiqueta ?? agente.modoConocimiento,
+    detalle: modo?.detalle,
+  };
 }
 
 /**
@@ -55,7 +82,7 @@ export default async function AgentesPage({ searchParams }: PageProps<"/configur
         <summary className="cursor-pointer text-sm font-medium text-zinc-900 dark:text-zinc-50">
           Nuevo agente
         </summary>
-        <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="mt-4 border-t border-linea pt-4">
           <FormularioAgente
             tiposProceso={tipos}
             modeloPorDefecto={estudio.modeloPorDefecto}
@@ -68,83 +95,108 @@ export default async function AgentesPage({ searchParams }: PageProps<"/configur
       {agentes.length === 0 ? (
         <Vacio>No hay agentes. Creá el primero para poder usarlo en un expediente.</Vacio>
       ) : (
-        <ul className="space-y-4">
-          {agentes.map((agente) => (
-            <li key={agente.id} className={claseTarjeta}>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  {agente.nombre}
-                </h2>
-                <Marca>{etiquetaRol(agente.rol)}</Marca>
-                {agente.origen === "ejemplo" ? <Marca>ejemplo</Marca> : null}
-                {agente.activo ? null : <Marca tono="aviso">inactivo</Marca>}
-                {agente.modoConocimiento === "general" ? (
-                  <Marca tono="aviso">conocimiento general</Marca>
-                ) : null}
-              </div>
+        <ul className="space-y-2.5">
+          {agentes.map((agente, orden) => {
+            const modo = estadoDelModo(agente);
+            return (
+              <Registro key={agente.id} orden={orden}>
+                <div className={claseRejillaRegistro}>
+                  <Rotulo className="sm:col-span-2">{etiquetaRol(agente.rol)}</Rotulo>
 
-              {agente.descripcion ? (
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {agente.descripcion}
-                </p>
-              ) : null}
+                  <h2 className={claseNombreRegistro}>
+                    {agente.nombre}
+                    {agente.origen === "ejemplo" ? (
+                      <Marca className="ml-2 align-middle">ejemplo</Marca>
+                    ) : null}
+                  </h2>
+                  <Semaforo
+                    tono={agente.activo ? "ok" : "neutro"}
+                    etiqueta={agente.activo ? "Activo" : "Inactivo"}
+                    detalle={
+                      agente.activo
+                        ? "Se ofrece para trabajar en un expediente."
+                        : "No se ofrece en los expedientes. La configuración queda guardada."
+                    }
+                    className={claseColumnaEstado}
+                  />
 
-              <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs text-zinc-500 sm:grid-cols-2 dark:text-zinc-500">
-                <div>
-                  <dt className="inline font-medium">Rama: </dt>
-                  <dd className="inline">{agente.rama || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Especialidades: </dt>
-                  <dd className="inline">{agente.especialidades.join(" · ") || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Actúa en: </dt>
-                  <dd className="inline">{nombresDeTipos(agente.tiposProcesoIds, tipos)}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Modelo: </dt>
-                  <dd className="inline">{agente.modelo}</dd>
-                </div>
-              </dl>
-
-              {agente.guiasComportamiento ? (
-                <p className="mt-3 border-l-2 border-zinc-200 pl-3 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-                  {agente.guiasComportamiento}
-                </p>
-              ) : null}
-
-              <details className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                <summary className="cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                  Editar
-                </summary>
-                <div className="mt-4">
-                  <FormularioAgente
-                    agente={agente}
-                    tiposProceso={tipos}
-                    modeloPorDefecto={estudio.modeloPorDefecto}
-                    accion={guardarAgente}
-                    textoBoton="Guardar cambios"
+                  {/*
+                    Sin descripción se deja la celda vacía y no se omite: en una
+                    rejilla, saltearla correría el estado de la derecha a esta
+                    columna.
+                  */}
+                  {agente.descripcion ? (
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      {agente.descripcion}
+                    </p>
+                  ) : (
+                    <span aria-hidden />
+                  )}
+                  <Semaforo
+                    tono={modo.tono}
+                    etiqueta={modo.etiqueta}
+                    detalle={modo.detalle}
+                    className={`mt-2 ${claseColumnaEstado}`}
                   />
                 </div>
-              </details>
 
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                <form action={duplicarAgente}>
-                  <input type="hidden" name="id" value={agente.id} />
-                  <button type="submit" className={claseBotonSecundario}>
-                    Duplicar
-                  </button>
-                </form>
-                <form action={borrarAgente}>
-                  <input type="hidden" name="id" value={agente.id} />
-                  <button type="submit" className={claseBotonPeligro}>
-                    Borrar
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
+                <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs text-zinc-500 sm:grid-cols-2 dark:text-zinc-400">
+                  <div>
+                    <dt className="inline font-medium">Rama: </dt>
+                    <dd className="inline">{agente.rama || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-medium">Especialidades: </dt>
+                    <dd className="inline">{agente.especialidades.join(" · ") || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-medium">Actúa en: </dt>
+                    <dd className="inline">{nombresDeTipos(agente.tiposProcesoIds, tipos)}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-medium">Modelo: </dt>
+                    <dd className="inline">{agente.modelo}</dd>
+                  </div>
+                </dl>
+
+                {agente.guiasComportamiento ? (
+                  <p className="mt-3 border-l-2 border-linea pl-3 text-xs text-zinc-600 dark:text-zinc-400">
+                    {agente.guiasComportamiento}
+                  </p>
+                ) : null}
+
+                <details className={claseSeparador}>
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Editar
+                  </summary>
+                  <div className="mt-4">
+                    <FormularioAgente
+                      agente={agente}
+                      tiposProceso={tipos}
+                      modeloPorDefecto={estudio.modeloPorDefecto}
+                      accion={guardarAgente}
+                      textoBoton="Guardar cambios"
+                    />
+                  </div>
+                </details>
+
+                <div className={`${claseSeparador} flex flex-wrap gap-2`}>
+                  <form action={duplicarAgente}>
+                    <input type="hidden" name="id" value={agente.id} />
+                    <button type="submit" className={claseBotonSecundario}>
+                      Duplicar
+                    </button>
+                  </form>
+                  <form action={borrarAgente}>
+                    <input type="hidden" name="id" value={agente.id} />
+                    <button type="submit" className={claseBotonPeligro}>
+                      Borrar
+                    </button>
+                  </form>
+                </div>
+              </Registro>
+            );
+          })}
         </ul>
       )}
     </>

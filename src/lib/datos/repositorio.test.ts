@@ -9,6 +9,7 @@ import {
   listarAgentes,
   obtenerAgente,
 } from "./agentes";
+import { hoy } from "./almacen";
 import { actualizarEstudio, obtenerEstudio } from "./estudio";
 import {
   crearExpediente,
@@ -53,6 +54,17 @@ const EXPEDIENTE_BASE = {
   rolCliente: "actor" as const,
   estado: "en_tramite" as const,
   notas: "SE PRESENTO LA DEMANDA EL LUNES",
+  juzgadoTipo: "civil y comercial comun",
+  juzgadoNumero: "vi",
+  oficinaGestion: "oga civil y comercial capital",
+  clase: "principal" as const,
+  // Vacías a propósito: así se ejercita que el alta resuelve el último
+  // movimiento y que una audiencia sin fecha no se guarda.
+  ultimoMovimiento: "",
+  caducidadDeclarada: "",
+  audienciaTipo: "",
+  audienciaFecha: "",
+  audienciaHora: "",
 };
 
 describe("almacén", () => {
@@ -129,12 +141,45 @@ describe("expedientes", () => {
     expect((await crearExpediente({ ...EXPEDIENTE_BASE, caratula: "  " })).ok).toBe(false);
   });
 
+  it("normaliza la radicación y resuelve el último movimiento", async () => {
+    const resultado = await crearExpediente({
+      ...EXPEDIENTE_BASE,
+      audienciaTipo: "audiencia preliminar",
+    });
+    if (!resultado.ok) throw new Error(resultado.error);
+
+    expect(resultado.valor.juzgadoTipo).toBe("Civil y Comercial Común");
+    // La nominación va en mayúsculas, como la muestra el SAE.
+    expect(resultado.valor.juzgadoNumero).toBe("VI");
+    expect(resultado.valor.oficinaGestion).toBe("OGA Civil y Comercial Capital");
+    // El alta es un movimiento: sin fecha cargada, se usa la de hoy.
+    expect(resultado.valor.ultimoMovimiento).toBe(hoy());
+    // Un tipo de audiencia sin fecha no es una audiencia fijada.
+    expect(resultado.valor.audienciaTipo).toBe("");
+  });
+
+  it("descarta las fechas mal escritas en lugar de guardarlas a medias", async () => {
+    const resultado = await crearExpediente({
+      ...EXPEDIENTE_BASE,
+      ultimoMovimiento: "2026-02-31", // febrero no tiene 31
+      caducidadDeclarada: "20/09/2026", // no es el formato que se guarda
+      audienciaFecha: "2026-10-16",
+      audienciaHora: "25:00",
+    });
+    if (!resultado.ok) throw new Error(resultado.error);
+
+    expect(resultado.valor.ultimoMovimiento).toBe(hoy());
+    expect(resultado.valor.caducidadDeclarada).toBe("");
+    expect(resultado.valor.audienciaFecha).toBe("2026-10-16");
+    expect(resultado.valor.audienciaHora).toBe("");
+  });
+
   it("persiste entre lecturas", async () => {
     const creado = await crearExpediente(EXPEDIENTE_BASE);
     if (!creado.ok) throw new Error(creado.error);
     const leido = await obtenerExpediente(creado.valor.id);
     expect(leido?.caratula).toBe("Nicolás Rogel c/ Swiss Medical ART s/ Daños y Perjuicios");
-    expect(await listarExpedientes()).toHaveLength(3); // dos de ejemplo + el nuevo
+    expect(await listarExpedientes()).toHaveLength(8); // siete de ejemplo + el nuevo
   });
 });
 
@@ -195,7 +240,8 @@ describe("tipos de proceso", () => {
     const resultado = await eliminarTipoProceso("tp-ordinario");
     expect(resultado.ok).toBe(false);
     if (resultado.ok) return;
-    expect(resultado.error).toContain("1 expediente lo usa");
+    // Dos ejemplos usan el ordinario: el principal de Rogel y el incidente.
+    expect(resultado.error).toContain("2 expedientes lo usan");
   });
 
   it("al borrar uno libre, lo quita de los agentes que lo tenían asignado", async () => {

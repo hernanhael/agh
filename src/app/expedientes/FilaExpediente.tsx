@@ -1,37 +1,37 @@
-import Link from "next/link";
+import { CalendarClock, Landmark } from "lucide-react";
+import {
+  claseColumnaEstado,
+  claseDatoRegistro,
+  claseNombreRegistro,
+  claseRejillaRegistro,
+  Meta,
+  Punto,
+  Registro,
+  Rotulo,
+} from "@/components/Registro";
+import { ChipProcesal } from "@/components/SituacionProcesal";
 // Se importa de los módulos puros y no del barril `@/lib/datos`, que arrastra
 // el almacén y con él `node:fs`: esta fila se renderiza también en el cliente.
-import { etiquetaEstado, identificador } from "@/lib/datos/filtros";
-import {
-  CENTROS_JUDICIALES,
-  type EstadoExpediente,
-  type Expediente,
-  type TipoProceso,
-} from "@/lib/datos/tipos";
+import { identificador, nombreJuzgado } from "@/lib/datos/filtros";
+import { CENTROS_JUDICIALES, type Expediente, type TipoProceso } from "@/lib/datos/tipos";
+import { audienciaFijada, situacionCaducidad } from "@/lib/procesal";
 
 /**
- * Una fila del registro de expedientes.
+ * Una fila del registro de expedientes: la burbuja que el abogado lee antes de
+ * entrar al expediente.
  *
- * Tres niveles de lectura, de arriba abajo: identificación (número, juzgado,
- * estado), identidad de la causa (la carátula, en serif, que es lo que el
- * abogado reconoce de un vistazo) y situación procesal (tipo de proceso, etapa
- * y avance).
+ * Usa las piezas del registro (`components/Registro.tsx`), que son el dibujo
+ * común de las listas de la aplicación. Acá se completa con derecho procesal:
+ *
+ *   fila 1:  número
+ *   fila 2:  carátula                               | semáforo de caducidad
+ *   fila 3:  juzgado · OGA · centro · audiencia      | etapa
+ *
+ * No se muestran la materia ni el tipo de proceso: el tipo ya surge de la
+ * carátula y la materia es un dato de la ficha, para sugerir agentes. El detalle
+ * del movimiento tampoco: en la lista alcanza el color, y de dónde sale ese
+ * color se ve al pasar el mouse por el semáforo y explicado en la ficha.
  */
-
-/**
- * Color por estado, en el punto y en la etiqueta. Es semántico, no decorativo:
- * el rojo está reservado para "paralizado", que es el que implica riesgo de
- * caducidad de instancia (docs/02-expedientes.md §2.9).
- */
-const ESTILO_ESTADO: Record<EstadoExpediente, { punto: string; texto: string }> = {
-  en_mediacion: { punto: "bg-sky-500", texto: "text-sky-700 dark:text-sky-400" },
-  en_tramite: { punto: "bg-emerald-500", texto: "text-emerald-700 dark:text-emerald-400" },
-  suspendido: { punto: "bg-amber-500", texto: "text-amber-700 dark:text-amber-400" },
-  con_sentencia: { punto: "bg-indigo-500", texto: "text-indigo-700 dark:text-indigo-400" },
-  en_ejecucion: { punto: "bg-violet-500", texto: "text-violet-700 dark:text-violet-400" },
-  archivado: { punto: "bg-zinc-400", texto: "text-zinc-500 dark:text-zinc-400" },
-  paralizado: { punto: "bg-rose-500", texto: "text-rose-700 dark:text-rose-400" },
-};
 
 function etiquetaCentro(centro: string): string {
   return CENTROS_JUDICIALES.find((candidato) => candidato.valor === centro)?.etiqueta ?? centro;
@@ -75,57 +75,70 @@ function Caratula({ expediente }: { expediente: Expediente }) {
 export function FilaExpediente({
   expediente,
   tipo,
+  hoy,
   orden,
 }: {
   expediente: Expediente;
   tipo: TipoProceso | undefined;
+  /**
+   * Día de hoy en 'YYYY-MM-DD'. Lo trae el servidor en lugar de leerlo del
+   * reloj acá: la fila se renderiza en los dos lados y el semáforo tiene que
+   * dar lo mismo en el HTML inicial y después de la hidratación.
+   */
+  hoy: string;
   /** Posición en la lista, para escalonar la entrada. */
   orden: number;
 }) {
-  const estilo = ESTILO_ESTADO[expediente.estado] ?? ESTILO_ESTADO.en_tramite;
+  const situacion = situacionCaducidad(expediente, hoy);
   const etapa = tipo?.etapas.find((candidata) => candidata.clave === expediente.etapaActual);
+  const juzgado = nombreJuzgado(expediente);
+  const audiencia = audienciaFijada(expediente, hoy);
+  // Una audiencia que ya pasó no es una audiencia fijada: queda en la ficha,
+  // pero no ocupa la burbuja, que es para lo que todavía hay que hacer.
+  const proxima = audiencia && !audiencia.pasada ? audiencia : undefined;
 
   return (
-    <li className="aparece" style={{ animationDelay: `${Math.min(orden, 8) * 30}ms` }}>
-      <Link
-        href={`/expedientes/${expediente.id}`}
-        className="block rounded-lg border border-linea bg-superficie px-4 py-3.5 transition-colors hover:border-linea-fuerte hover:bg-acento-suave focus-visible:border-acento focus-visible:bg-acento-suave focus-visible:outline-none"
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="rotulo text-zinc-500 dark:text-zinc-400">
-            {identificador(expediente)}
-          </span>
-          <span className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
-            {expediente.fuero}
-            <span className="px-1.5 text-linea-fuerte">·</span>
-            {etiquetaCentro(expediente.centroJudicial)}
-          </span>
-          <span className={`rotulo flex shrink-0 items-center gap-1.5 ${estilo.texto}`}>
-            <span aria-hidden className={`size-1.5 rounded-full ${estilo.punto}`} />
-            {etiquetaEstado(expediente.estado)}
-          </span>
-        </div>
+    <Registro href={`/expedientes/${expediente.id}`} orden={orden}>
+      <div className={claseRejillaRegistro}>
+        <Rotulo className="sm:col-span-2">{identificador(expediente)}</Rotulo>
 
-        <h2 className="mt-1.5 text-[15px] leading-snug text-zinc-900 dark:text-zinc-50">
+        <h2 className={claseNombreRegistro}>
           <Caratula expediente={expediente} />
         </h2>
+        <ChipProcesal situacion={situacion} className={claseColumnaEstado} />
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-          <span>{tipo?.nombre ?? "Sin tipo de proceso"}</span>
-          {etapa ? (
+        {/*
+          La tercera fila arranca separada de la carátula: el margen va en las
+          dos celdas para que sigan enfrentadas.
+        */}
+        <Meta className="mt-2">
+          <Landmark aria-hidden className="size-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+          {/* Sin juzgado cargado se muestra el fuero, que es el dato que hay. */}
+          <span className="text-zinc-700 dark:text-zinc-300">
+            {juzgado ? `Juzgado ${juzgado}` : expediente.fuero}
+          </span>
+          {expediente.oficinaGestion ? (
             <>
-              <span className="text-linea-fuerte">·</span>
-              <span className="text-zinc-700 dark:text-zinc-300">{etapa.nombre}</span>
+              <Punto />
+              <span>{expediente.oficinaGestion}</span>
             </>
           ) : null}
-          {expediente.materia ? (
+          <Punto />
+          <span>{etiquetaCentro(expediente.centroJudicial)}</span>
+          {proxima ? (
             <>
-              <span className="text-linea-fuerte">·</span>
-              <span>{expediente.materia}</span>
+              <Punto />
+              <span className="inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300">
+                <CalendarClock aria-hidden className="size-3.5 shrink-0" />
+                {proxima.texto}
+              </span>
             </>
           ) : null}
-        </div>
-      </Link>
-    </li>
+        </Meta>
+        <span className={`mt-2 ${claseDatoRegistro} ${claseColumnaEstado}`}>
+          {etapa?.nombre ?? "Sin etapa"}
+        </span>
+      </div>
+    </Registro>
   );
 }

@@ -2,15 +2,18 @@ import { randomUUID } from "node:crypto";
 import {
   construirCaratula,
   nombrePropio,
+  normalizarEspacios,
   numeroExpediente,
   oracion,
   partirCaratula,
   titulo,
 } from "@/lib/formato";
 import { ahora, hoy, leerDatos, modificarDatos } from "./almacen";
+import { oficinaGestion } from "./filtros";
 import { correcto, fallo, type Resultado } from "./resultado";
 import type {
   CentroJudicial,
+  ClaseExpediente,
   EstadoExpediente,
   Expediente,
   RolCliente,
@@ -40,6 +43,20 @@ export interface EntradaExpediente {
   rolCliente: RolCliente;
   estado: EstadoExpediente;
   notas: string;
+  /** Radicación: tipo de juzgado, nominación y Oficina de Gestión Asociada. */
+  juzgadoTipo: string;
+  juzgadoNumero: string;
+  oficinaGestion: string;
+  /** Principal o incidente: decide el plazo de caducidad (seis o tres meses). */
+  clase: ClaseExpediente;
+  /** Fecha del último movimiento. Si viene vacía, se usa la de hoy. */
+  ultimoMovimiento: string;
+  /** Fecha en que el juzgado declaró la caducidad, si la declaró. */
+  caducidadDeclarada: string;
+  /** Audiencia fijada, si hay una. */
+  audienciaTipo: string;
+  audienciaFecha: string;
+  audienciaHora: string;
 }
 
 export async function listarExpedientes(): Promise<Expediente[]> {
@@ -52,8 +69,53 @@ export async function obtenerExpediente(id: string): Promise<Expediente | undefi
   return expedientes.find((expediente) => expediente.id === id);
 }
 
+/**
+ * Juzgados y Oficinas de Gestión Asociada que ya se usaron, para sugerirlos en
+ * el alta sin obligar a elegir de una lista cerrada. Es el mismo criterio que
+ * `listarMaterias` y desaparece cuando exista el catálogo de juzgados de
+ * Configuración (`courts` en docs/06-modelo-de-datos.md).
+ */
+export async function listarRadicaciones(): Promise<{
+  juzgados: string[];
+  nominaciones: string[];
+  oficinasGestion: string[];
+}> {
+  const { expedientes } = await leerDatos();
+  const ordenar = (valores: Set<string>) =>
+    [...valores].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
+
+  return {
+    juzgados: ordenar(new Set(expedientes.map((expediente) => expediente.juzgadoTipo ?? ""))),
+    nominaciones: ordenar(new Set(expedientes.map((expediente) => expediente.juzgadoNumero ?? ""))),
+    oficinasGestion: ordenar(new Set(expedientes.map(oficinaGestion))),
+  };
+}
+
 // La búsqueda, los filtros y `identificador` viven en `./filtros`, que es un
 // módulo puro: el listado los usa en el cliente para filtrar mientras se tipea.
+
+/** 'YYYY-MM-DD' si la fecha está bien escrita y existe; si no, cadena vacía. */
+function fecha(valor: string): string {
+  const limpio = normalizarEspacios(valor);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(limpio)) return "";
+  // El constructor de Date corrige los meses y días imposibles ("2026-02-31"
+  // pasa a marzo), así que se compara contra lo que se escribió.
+  return new Date(`${limpio}T00:00:00Z`).toISOString().slice(0, 10) === limpio ? limpio : "";
+}
+
+/** 'HH:mm' en formato de 24 horas; vacía si no lo es. */
+function hora(valor: string): string {
+  const limpio = normalizarEspacios(valor);
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(limpio) ? limpio : "";
+}
+
+/**
+ * Nominación del juzgado en mayúsculas: se escribe en números romanos ("VI") y
+ * el SAE la muestra así, pero el abogado puede cargar "6" y se respeta.
+ */
+function nominacion(valor: string): string {
+  return normalizarEspacios(valor).toUpperCase();
+}
 
 /**
  * Normaliza lo que cargó el abogado: la carátula se parte en actor,
@@ -65,6 +127,9 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
   const partes = partirCaratula(entrada.caratula);
   const identificacion = numeroExpediente(entrada.numero, entrada.anio);
   const [numero, anio] = identificacion ? identificacion.split("/") : ["", ""];
+  // Sin fecha no hay audiencia fijada: el tipo y la hora sueltos serían un
+  // resto de una audiencia que ya pasó o que se dio de baja.
+  const audienciaFecha = fecha(entrada.audienciaFecha);
 
   return {
     numero,
@@ -79,6 +144,17 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
     rolCliente: entrada.rolCliente,
     estado: entrada.estado,
     notas: oracion(entrada.notas),
+    juzgadoTipo: titulo(entrada.juzgadoTipo, opciones),
+    juzgadoNumero: nominacion(entrada.juzgadoNumero),
+    oficinaGestion: titulo(entrada.oficinaGestion, opciones),
+    clase: entrada.clase === "incidente" ? ("incidente" as const) : ("principal" as const),
+    // Una fecha mal escrita no se guarda a medias: queda vacía y el cómputo de
+    // la caducidad cae en la fecha de la etapa, que es un dato que sí existe.
+    ultimoMovimiento: fecha(entrada.ultimoMovimiento),
+    caducidadDeclarada: fecha(entrada.caducidadDeclarada),
+    audienciaFecha,
+    audienciaTipo: audienciaFecha ? titulo(entrada.audienciaTipo, opciones) : "",
+    audienciaHora: audienciaFecha ? hora(entrada.audienciaHora) : "",
   };
 }
 
@@ -120,6 +196,9 @@ export async function crearExpediente(
       tipoProcesoId: tipo.id,
       etapaActual: etapaInicial(tipo, entrada.etapaActual),
       etapaDesde: hoy(),
+      // Dar de alta el expediente cuenta como movimiento: sin esto, un
+      // expediente nuevo con la fecha en blanco nacería para caducidad.
+      ultimoMovimiento: campos.ultimoMovimiento || hoy(),
       creadoEn: marca,
       actualizadoEn: marca,
     };
@@ -165,6 +244,11 @@ export async function actualizarExpediente(
       tipoProcesoId: tipo.id,
       etapaActual: etapa,
       etapaDesde: cambioDeEtapa ? hoy() : expediente.etapaDesde,
+      // Pasar de etapa es un movimiento del expediente, así que corre de nuevo
+      // el plazo de caducidad. Si el abogado no tocó la fecha, se conserva la
+      // que había en lugar de borrarla.
+      ultimoMovimiento:
+        campos.ultimoMovimiento || (cambioDeEtapa ? hoy() : (expediente.ultimoMovimiento ?? "")),
       actualizadoEn: ahora(),
     });
     return correcto(expediente);

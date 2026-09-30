@@ -19,7 +19,7 @@ export function SubNav({
   const pathname = usePathname();
 
   return (
-    <nav className={`flex flex-wrap gap-1 border-b border-zinc-200 dark:border-zinc-800 ${className}`}>
+    <nav className={`flex flex-wrap gap-1 border-b border-linea ${className}`}>
       {secciones.map((seccion) => {
         const activo =
           pathname === seccion.href ||

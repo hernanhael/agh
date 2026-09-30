@@ -89,6 +89,15 @@ export type EstadoExpediente =
 
 export type RolCliente = "actor" | "demandado" | "tercero" | "heredero" | "acreedor" | "otro";
 
+/**
+ * Principal o incidente.
+ *
+ * No es una distinción decorativa: el plazo de caducidad de instancia es de
+ * seis meses en el principal y de tres en los incidentes
+ * (docs/02-expedientes.md §2.11).
+ */
+export type ClaseExpediente = "principal" | "incidente";
+
 /** Expediente: `cases`. */
 export interface Expediente {
   id: string;
@@ -113,6 +122,40 @@ export interface Expediente {
   notas: string;
   creadoEn: string;
   actualizadoEn: string;
+
+  /*
+   * Campos agregados después de la primera versión del almacén. Son
+   * opcionales porque los expedientes que ya estaban guardados no los tienen,
+   * igual que una columna que se agrega a una tabla con filas: el código que
+   * los lee resuelve el valor faltante (`lib/procesal`, `nombreJuzgado`).
+   */
+
+  /**
+   * Radicación. Tipo de juzgado ("Civil y Comercial Común") y su nominación
+   * ("VI"), más la Oficina de Gestión Asociada que lo atiende. Cuando exista
+   * el catálogo de juzgados y secretarías de Configuración (`courts` en
+   * docs/06-modelo-de-datos.md), estos tres campos pasan a ser una referencia.
+   */
+  juzgadoTipo?: string;
+  juzgadoNumero?: string;
+  /** Oficina de Gestión Asociada (OGA) del juzgado. */
+  oficinaGestion?: string;
+
+  /** Principal o incidente. Si falta, se asume principal. */
+  clase?: ClaseExpediente;
+  /**
+   * Fecha del último movimiento útil del expediente, de la que se cuenta la
+   * caducidad de instancia. Hoy se carga a mano; cuando exista la historia del
+   * expediente la va a escribir la última entrada (docs/02-expedientes.md §2.3).
+   */
+  ultimoMovimiento?: string;
+  /** Fecha en que el juzgado declaró la caducidad. Vacío si no se declaró. */
+  caducidadDeclarada?: string;
+
+  /** Audiencia fijada: tipo, fecha y hora. Vacío si no hay ninguna fijada. */
+  audienciaTipo?: string;
+  audienciaFecha?: string;
+  audienciaHora?: string;
 }
 
 /** Datos del estudio y preferencias: `profiles`. */
@@ -155,6 +198,29 @@ export const FUEROS: ReadonlyArray<string> = [
   "Cobros y Apremios",
   "Familia y Sucesiones",
   "Paz",
+];
+
+export const CLASES_EXPEDIENTE: ReadonlyArray<{
+  valor: ClaseExpediente;
+  etiqueta: string;
+  detalle: string;
+}> = [
+  { valor: "principal", etiqueta: "Principal", detalle: "La caducidad corre a los seis meses." },
+  { valor: "incidente", etiqueta: "Incidente", detalle: "La caducidad corre a los tres meses." },
+];
+
+/**
+ * Audiencias que se fijan en el fuero Civil y Comercial. Se ofrecen como
+ * sugerencia en un campo libre: el nombre lo pone el juzgado y el abogado
+ * puede escribir cualquiera.
+ */
+export const TIPOS_AUDIENCIA: ReadonlyArray<string> = [
+  "Audiencia Preliminar",
+  "Audiencia de Vista de Causa",
+  "Audiencia de Mediación",
+  "Audiencia de Conciliación",
+  "Audiencia Testimonial",
+  "Audiencia de Absolución de Posiciones",
 ];
 
 export const ESTADOS_EXPEDIENTE: ReadonlyArray<{ valor: EstadoExpediente; etiqueta: string }> = [
@@ -207,3 +273,8 @@ export const MODELOS: ReadonlyArray<{ valor: string; etiqueta: string }> = [
   { valor: "anthropic/claude-sonnet-5", etiqueta: "Claude Sonnet 5 — equilibrado" },
   { valor: "anthropic/claude-haiku-4-5", etiqueta: "Claude Haiku 4.5 — clasificación y resúmenes" },
 ];
+
+/** Etiqueta legible de un estado del expediente. */
+export function etiquetaEstado(estado: EstadoExpediente | string): string {
+  return ESTADOS_EXPEDIENTE.find((candidato) => candidato.valor === estado)?.etiqueta ?? estado;
+}

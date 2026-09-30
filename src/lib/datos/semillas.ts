@@ -265,8 +265,29 @@ export const AGENTES_EJEMPLO: Agente[] = [
 ];
 
 /**
- * Dos expedientes de ejemplo. El primero es el caso que pidió el abogado:
- * cargado en mayúsculas y sin tildes, se guarda ya normalizado.
+ * Expedientes de ejemplo. El primero es el caso que pidió el abogado: cargado
+ * en mayúsculas y sin tildes, se guarda ya normalizado.
+ *
+ * Están elegidos para que se vea **todo el semáforo de la caducidad de
+ * instancia** (`lib/procesal/caducidad`, docs/02-expedientes.md §2.11) con
+ * datos que se pueden tocar:
+ *
+ * | Ejemplo | Situación |
+ * |---|---|
+ * | Rogel (principal) | verde, con audiencia preliminar fijada |
+ * | Díaz (sucesorio) | verde |
+ * | Gómez (sumario) | verde con aviso: faltan menos de treinta días |
+ * | Rogel (incidente) | amarillo: pasaron los tres meses del incidente |
+ * | Municipalidad (expropiación) | amarillo: pasaron los seis meses del principal |
+ * | Nieva (ejecutivo) | rojo: el juzgado declaró la caducidad |
+ * | Sosa (desalojo) | gris: con sentencia, no hay instancia que pueda caducar |
+ *
+ * Las fechas son fijas, así que con el paso del tiempo el ejemplo del aviso
+ * pasa a amarillo y los amarillos se hacen más viejos: es el comportamiento
+ * esperado, y el abogado los edita o los borra como cualquier otro.
+ *
+ * Los juzgados y las Oficinas de Gestión Asociada son **[a confirmar]** contra
+ * los nombres que usa el Portal del SAE (docs/08-roadmap.md, punto 9).
  */
 export const EXPEDIENTES_EJEMPLO: Datos["expedientes"] = [
   {
@@ -282,9 +303,18 @@ export const EXPEDIENTES_EJEMPLO: Datos["expedientes"] = [
     etapaDesde: "2026-09-15",
     centroJudicial: "capital",
     fuero: "Civil y Comercial Común",
+    juzgadoTipo: "Civil y Comercial Común",
+    juzgadoNumero: "VI",
+    oficinaGestion: "OGA Civil y Comercial Capital",
     materia: "Daños y Perjuicios",
     rolCliente: "actor",
     estado: "en_tramite",
+    clase: "principal",
+    ultimoMovimiento: "2026-09-15",
+    caducidadDeclarada: "",
+    audienciaTipo: "Audiencia Preliminar",
+    audienciaFecha: "2026-10-16",
+    audienciaHora: "09:30",
     notas: "Expediente de ejemplo. Se puede editar o borrar.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
@@ -302,10 +332,173 @@ export const EXPEDIENTES_EJEMPLO: Datos["expedientes"] = [
     etapaDesde: "2026-08-04",
     centroJudicial: "concepcion",
     fuero: "Familia y Sucesiones",
+    juzgadoTipo: "Familia y Sucesiones",
+    juzgadoNumero: "II",
+    oficinaGestion: "OGA Familia Concepción",
     materia: "Sucesiones",
     rolCliente: "heredero",
     estado: "en_tramite",
+    clase: "principal",
+    ultimoMovimiento: "2026-08-04",
+    caducidadDeclarada: "",
+    audienciaTipo: "",
+    audienciaFecha: "",
+    audienciaHora: "",
     notas: "Expediente de ejemplo. Se puede editar o borrar.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ex-gomez",
+    numero: "3120",
+    anio: "26",
+    caratula: "Ramón Gómez c/ Electrónica del Norte SRL s/ Cumplimiento de Contrato",
+    actor: "Ramón Gómez",
+    demandado: "Electrónica del Norte SRL",
+    objeto: "Cumplimiento de Contrato",
+    tipoProcesoId: "tp-sumario",
+    etapaActual: "prueba",
+    etapaDesde: "2026-04-05",
+    centroJudicial: "capital",
+    fuero: "Civil y Comercial Común",
+    // Otra nominación del mismo fuero: el filtro por juzgado los distingue.
+    juzgadoTipo: "Civil y Comercial Común",
+    juzgadoNumero: "IV",
+    oficinaGestion: "OGA Civil y Comercial Capital",
+    materia: "Consumidor",
+    rolCliente: "actor",
+    estado: "en_tramite",
+    clase: "principal",
+    ultimoMovimiento: "2026-04-05",
+    caducidadDeclarada: "",
+    audienciaTipo: "",
+    audienciaFecha: "",
+    audienciaHora: "",
+    notas:
+      "Expediente de ejemplo: se acerca a los seis meses sin movimiento, así que la burbuja avisa cuántos días faltan. Se puede editar o borrar.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ex-rogel-incidente",
+    numero: "2210",
+    anio: "26",
+    caratula: "Nicolás Rogel c/ Swiss Medical ART s/ Incidente de Nulidad",
+    actor: "Nicolás Rogel",
+    demandado: "Swiss Medical ART",
+    objeto: "Incidente de Nulidad",
+    tipoProcesoId: "tp-ordinario",
+    etapaActual: "prueba",
+    etapaDesde: "2026-05-11",
+    // El incidente se tramita ante el mismo juzgado que el principal 1234/26,
+    // con su propio número.
+    centroJudicial: "capital",
+    fuero: "Civil y Comercial Común",
+    juzgadoTipo: "Civil y Comercial Común",
+    juzgadoNumero: "VI",
+    oficinaGestion: "OGA Civil y Comercial Capital",
+    materia: "Daños y Perjuicios",
+    rolCliente: "actor",
+    estado: "en_tramite",
+    clase: "incidente",
+    ultimoMovimiento: "2026-05-11",
+    caducidadDeclarada: "",
+    audienciaTipo: "",
+    audienciaFecha: "",
+    audienciaHora: "",
+    notas:
+      "Expediente de ejemplo: incidente del principal 1234/26, sin movimiento hace más de tres meses. Se puede editar o borrar.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ex-muni",
+    numero: "4870",
+    anio: "26",
+    caratula: "Municipalidad de San Miguel de Tucumán c/ María de los Ángeles Pérez s/ Expropiación",
+    actor: "Municipalidad de San Miguel de Tucumán",
+    demandado: "María de los Ángeles Pérez",
+    objeto: "Expropiación",
+    tipoProcesoId: "tp-expropiacion",
+    etapaActual: "tasacion_y_prueba",
+    etapaDesde: "2026-02-10",
+    centroJudicial: "capital",
+    fuero: "Civil y Comercial Común",
+    juzgadoTipo: "Civil y Comercial Común",
+    juzgadoNumero: "II",
+    oficinaGestion: "OGA Civil y Comercial Capital",
+    materia: "Expropiación",
+    rolCliente: "demandado",
+    estado: "en_tramite",
+    clase: "principal",
+    ultimoMovimiento: "2026-02-10",
+    caducidadDeclarada: "",
+    audienciaTipo: "",
+    audienciaFecha: "",
+    audienciaHora: "",
+    notas:
+      "Expediente de ejemplo: principal sin movimiento hace más de seis meses. Se puede editar o borrar.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ex-nieva",
+    numero: "640",
+    anio: "25",
+    caratula: "Cooperativa de Crédito El Norte Ltda. c/ Hugo Nieva s/ Cobro Ejecutivo",
+    actor: "Cooperativa de Crédito El Norte Ltda.",
+    demandado: "Hugo Nieva",
+    objeto: "Cobro Ejecutivo",
+    tipoProcesoId: "tp-ejecutivo",
+    etapaActual: "excepciones",
+    etapaDesde: "2025-09-01",
+    centroJudicial: "capital",
+    fuero: "Cobros y Apremios",
+    juzgadoTipo: "Cobros y Apremios",
+    juzgadoNumero: "II",
+    oficinaGestion: "OGA Cobros y Apremios Capital",
+    materia: "Ejecuciones",
+    rolCliente: "demandado",
+    estado: "en_tramite",
+    clase: "principal",
+    ultimoMovimiento: "2025-09-01",
+    caducidadDeclarada: "2026-06-12",
+    audienciaTipo: "",
+    audienciaFecha: "",
+    audienciaHora: "",
+    notas:
+      "Expediente de ejemplo: el juzgado declaró la caducidad de la instancia. Se puede editar o borrar.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ex-sosa",
+    numero: "1502",
+    anio: "26",
+    caratula: "Marta Sosa c/ Julio Barrionuevo s/ Desalojo",
+    actor: "Marta Sosa",
+    demandado: "Julio Barrionuevo",
+    objeto: "Desalojo",
+    tipoProcesoId: "tp-desalojo",
+    etapaActual: "sentencia",
+    etapaDesde: "2026-09-08",
+    centroJudicial: "monteros",
+    fuero: "Civil y Comercial Común",
+    juzgadoTipo: "Civil y Comercial Común",
+    juzgadoNumero: "I",
+    oficinaGestion: "OGA Monteros",
+    materia: "Locaciones",
+    rolCliente: "actor",
+    estado: "con_sentencia",
+    clase: "principal",
+    ultimoMovimiento: "2026-09-08",
+    caducidadDeclarada: "",
+    // Audiencia ya celebrada: no ocupa la burbuja, y en la ficha se ve marcada.
+    audienciaTipo: "Audiencia de Vista de Causa",
+    audienciaFecha: "2026-08-20",
+    audienciaHora: "10:00",
+    notas:
+      "Expediente de ejemplo: con sentencia, así que no hay instancia en curso que pueda caducar. Se puede editar o borrar.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },

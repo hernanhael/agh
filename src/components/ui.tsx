@@ -30,13 +30,29 @@ export const claseSelectFiltroActivo =
   "appearance-none rounded-md border border-acento bg-acento-suave py-1.5 pl-2.5 pr-7 text-xs font-medium text-acento transition-colors focus:outline-none focus:ring-1 focus:ring-acento";
 
 export const claseBotonSecundario =
-  "inline-flex items-center justify-center rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+  "inline-flex items-center justify-center rounded-md border border-linea-fuerte px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-background dark:text-zinc-300";
+
+/**
+ * Etapa de un tipo de proceso, en la tira de etapas: una pastilla sobre el papel
+ * del fondo, que es un tono más hondo que la superficie de la tarjeta.
+ */
+export const claseEtapa = "rounded bg-background px-2 py-1 text-zinc-700 dark:text-zinc-300";
 
 export const claseBotonPeligro =
   "inline-flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950";
 
-export const claseTarjeta =
-  "rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950";
+/**
+ * Cuadro de contenido: el mismo papel y las mismas líneas que las filas del
+ * registro (`components/Registro.tsx`), para que una ficha, un formulario y una
+ * lista se lean como partes de la misma hoja.
+ */
+export const claseTarjeta = "rounded-lg border border-linea bg-superficie p-4";
+
+/** Cuadro que además es un enlace: se tiñe al pasar el mouse, como el registro. */
+export const claseTarjetaEnlace = `${claseTarjeta} transition-colors hover:border-linea-fuerte hover:bg-acento-suave focus-visible:border-acento focus-visible:bg-acento-suave focus-visible:outline-none`;
+
+/** Línea fina que separa bloques dentro de un cuadro. */
+export const claseSeparador = "mt-4 border-t border-linea pt-4";
 
 /** Campo de formulario: etiqueta, control y ayuda opcional. */
 export function Campo({
@@ -106,18 +122,20 @@ export function Encabezado({
 export function Marca({
   children,
   tono = "neutro",
+  className = "",
 }: {
   children: ReactNode;
   tono?: "neutro" | "aviso" | "ok";
+  className?: string;
 }) {
   const tonos = {
-    neutro: "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400",
+    neutro: "border-linea-fuerte text-zinc-600 dark:text-zinc-400",
     aviso: "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400",
     ok: "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400",
   } as const;
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${tonos[tono]}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${tonos[tono]} ${className}`}
     >
       {children}
     </span>

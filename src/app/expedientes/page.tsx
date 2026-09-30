@@ -1,5 +1,5 @@
 import { Aviso, mensajes } from "@/components/ui";
-import { FILTROS_VACIOS, listarExpedientes, listarTiposProceso } from "@/lib/datos";
+import { FILTROS_VACIOS, hoy, listarExpedientes, listarTiposProceso } from "@/lib/datos";
 import { ListadoExpedientes } from "./ListadoExpedientes";
 
 /** Lee un parámetro de búsqueda que puede venir repetido. */
@@ -12,8 +12,12 @@ function uno(valor: string | string[] | undefined): string {
  *
  * El servidor trae los datos y el listado filtra en el cliente para que la
  * búsqueda responda en la misma tecla (`ListadoExpedientes`). Los filtros
- * iniciales se leen de la URL, así que un enlace con `?q=` o `?estado=` abre ya
- * filtrado.
+ * iniciales se leen de la URL, así que un enlace con `?q=`, `?estado=` o
+ * `?juzgado=` abre ya filtrado.
+ *
+ * El día de hoy se resuelve acá, en el servidor, y baja como dato: el semáforo
+ * de caducidad de cada fila tiene que dar lo mismo en el HTML inicial y después
+ * de la hidratación.
  */
 export default async function ExpedientesPage({ searchParams }: PageProps<"/expedientes">) {
   const parametros = await searchParams;
@@ -25,12 +29,15 @@ export default async function ExpedientesPage({ searchParams }: PageProps<"/expe
       <ListadoExpedientes
         expedientes={expedientes}
         tipos={tipos}
+        hoy={hoy()}
         filtrosIniciales={{
           ...FILTROS_VACIOS,
           consulta: uno(parametros.q),
           estado: uno(parametros.estado),
           materia: uno(parametros.materia),
           fuero: uno(parametros.fuero),
+          juzgado: uno(parametros.juzgado),
+          oga: uno(parametros.oga),
         }}
         aviso={<Aviso error={error} hecho={hecho} />}
       />

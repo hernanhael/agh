@@ -5,6 +5,7 @@ import {
   FILTROS_VACIOS,
   hayFiltros,
   identificador,
+  nombreJuzgado,
   opcionesDeFiltro,
   type Filtros,
 } from "./filtros";
@@ -50,6 +51,9 @@ const ROGEL = expediente({
   objeto: "Daños y Perjuicios",
   materia: "Daños y Perjuicios",
   estado: "en_tramite",
+  juzgadoTipo: "Civil y Comercial Común",
+  juzgadoNumero: "VI",
+  oficinaGestion: "OGA Civil y Comercial Capital",
 });
 
 const DIAZ = expediente({
@@ -64,6 +68,9 @@ const DIAZ = expediente({
   centroJudicial: "concepcion",
   estado: "en_tramite",
   rolCliente: "heredero",
+  juzgadoTipo: "Familia y Sucesiones",
+  juzgadoNumero: "II",
+  oficinaGestion: "OGA Familia Concepción",
 });
 
 const MUNI = expediente({
@@ -77,6 +84,9 @@ const MUNI = expediente({
   materia: "Expropiación",
   estado: "paralizado",
   rolCliente: "demandado",
+  juzgadoTipo: "Civil y Comercial Común",
+  juzgadoNumero: "VI",
+  oficinaGestion: "OGA Civil y Comercial Capital",
 });
 
 const TODOS = [ROGEL, DIAZ, MUNI];
@@ -176,6 +186,15 @@ describe("aplicarFiltros", () => {
     expect(filtrar({ materia: "EXPROPIACION" })).toEqual(["muni"]);
   });
 
+  it("filtra por juzgado y por Oficina de Gestión Asociada", () => {
+    expect(filtrar({ juzgado: "Civil y Comercial Común VI" })).toEqual(["rogel", "muni"]);
+    expect(filtrar({ juzgado: "Familia y Sucesiones II" })).toEqual(["diaz"]);
+    // La nominación es parte del juzgado: otra nominación es otro juzgado.
+    expect(filtrar({ juzgado: "Civil y Comercial Común IV" })).toEqual([]);
+    expect(filtrar({ oga: "OGA Familia Concepción" })).toEqual(["diaz"]);
+    expect(filtrar({ oga: "oga familia concepcion" })).toEqual(["diaz"]);
+  });
+
   it("combina los filtros con la búsqueda", () => {
     expect(filtrar({ estado: "en_tramite", consulta: "rogel" })).toEqual(["rogel"]);
     // El estado excluye al único que coincide con el texto.
@@ -192,6 +211,21 @@ describe("hayFiltros", () => {
     expect(hayFiltros({ ...FILTROS_VACIOS, estado: "en_tramite" })).toBe(true);
     expect(hayFiltros({ ...FILTROS_VACIOS, materia: "Sucesiones" })).toBe(true);
     expect(hayFiltros({ ...FILTROS_VACIOS, fuero: "Paz" })).toBe(true);
+    expect(hayFiltros({ ...FILTROS_VACIOS, juzgado: "Paz II" })).toBe(true);
+    expect(hayFiltros({ ...FILTROS_VACIOS, oga: "OGA Civil y Comercial Capital" })).toBe(true);
+  });
+});
+
+describe("nombreJuzgado", () => {
+  it("junta el tipo de juzgado con su nominación", () => {
+    expect(nombreJuzgado(ROGEL)).toBe("Civil y Comercial Común VI");
+  });
+
+  it("no deja espacios sueltos si falta una de las dos partes", () => {
+    expect(nombreJuzgado(expediente({ juzgadoTipo: "Paz", juzgadoNumero: "" }))).toBe("Paz");
+    expect(nombreJuzgado(expediente({ juzgadoNumero: "IV" }))).toBe("IV");
+    // Los expedientes guardados antes de que existiera el campo.
+    expect(nombreJuzgado(expediente({}))).toBe("");
   });
 });
 
@@ -211,6 +245,20 @@ describe("opcionesDeFiltro", () => {
       { valor: "Civil y Comercial Común", etiqueta: "Civil y Comercial Común", cantidad: 2 },
       { valor: "Familia y Sucesiones", etiqueta: "Familia y Sucesiones", cantidad: 1 },
     ]);
+    expect(opciones.juzgados).toEqual([
+      { valor: "Civil y Comercial Común VI", etiqueta: "Civil y Comercial Común VI", cantidad: 2 },
+      { valor: "Familia y Sucesiones II", etiqueta: "Familia y Sucesiones II", cantidad: 1 },
+    ]);
+    expect(opciones.ogas.map((o) => o.etiqueta)).toEqual([
+      "OGA Civil y Comercial Capital",
+      "OGA Familia Concepción",
+    ]);
+  });
+
+  it("no ofrece juzgados ni OGA de los expedientes que no los tienen", () => {
+    const opciones = opcionesDeFiltro([expediente({ id: "sin-juzgado" })]);
+    expect(opciones.juzgados).toEqual([]);
+    expect(opciones.ogas).toEqual([]);
   });
 
   it("no ofrece materias vacías", () => {

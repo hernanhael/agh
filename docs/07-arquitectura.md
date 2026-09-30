@@ -93,8 +93,16 @@ app/
     agentes/         agentes especializados
     acciones.ts      acciones de servidor del área
   api/               route handlers (chat, ingestión SAE, colas, cron)
+components/
+  Nav.tsx            riel lateral de áreas (§3.5)
+  SubNav.tsx         navegación entre secciones de un área
+  Registro.tsx       el dibujo de las listas: cuadro, rejilla, rótulo y semáforo (§3.6)
+  SituacionProcesal.tsx  la caducidad de instancia traducida a los tonos del registro
+  ui.tsx             clases y piezas compartidas: tarjeta, campo, aviso, marca, botones
 lib/
   plazos/            motor de plazos (puro, con tests)
+  procesal/          reglas procesales sobre el expediente: caducidad de instancia,
+                     audiencia fijada (puro, con tests; ver 02-expedientes.md §2.11)
   formato/           normalización de texto (puro, con tests; ver 10-normalizacion-de-texto.md)
   datos/             repositorios de configuración y expedientes; normalizan al guardar
   rag/               fragmentación, embeddings, búsqueda híbrida filtrada por agente y expediente
@@ -132,13 +140,22 @@ Hasta que esté montado Supabase, los repositorios de `lib/datos/` guardan en un
 - **Repositorios** (`almacen`, `expedientes`, `procesos`, `agentes`, `estudio`): llegan al almacén y por lo tanto a `node:fs`. `almacen.ts` está marcado con `import "server-only"`, así que importarlos desde un componente de cliente falla con un mensaje claro en lugar de un error del empaquetador.
 - **Módulos puros** (`tipos`, `filtros`): tipos, constantes, búsqueda y filtrado. Corren en los dos lados, y eso es lo que permite que el listado filtre en el cliente con exactamente las mismas reglas que usaría el servidor.
 
-El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos` y `lib/datos/filtros`.
+El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos`, `lib/datos/filtros` y `lib/procesal`.
 
-### 3.3 Normalización de texto
+### 3.3 Reglas procesales
+
+`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11) y la **audiencia fijada** (`audiencia.ts`).
+
+Es puro como `lib/plazos` y por los mismos motivos: corre en el servidor y en el cliente con el mismo resultado —el listado muestra el semáforo de caducidad mientras el abogado filtra— y se testea con fechas fijas. Dos reglas que se siguen de eso:
+
+- **El día de hoy es un argumento, no una lectura del reloj.** La página lo resuelve en el servidor y lo baja como dato, así el HTML inicial y la hidratación coinciden.
+- **Lo que se deduce no se guarda.** Se guardan los hechos (fecha del último movimiento, fecha de la caducidad declarada) y la situación se calcula en cada lectura.
+
+### 3.4 Normalización de texto
 
 `lib/formato/` es un módulo puro que formatea lo que se carga según qué es el dato (nombre propio, título, texto libre). Los repositorios lo aplican al guardar, de modo que cualquier vía de carga futura —el importador del SAE, una carga masiva— quede formateada igual sin repetir la regla. Detalle en `10-normalizacion-de-texto.md`.
 
-### 3.4 Cáscara de navegación
+### 3.5 Cáscara de navegación
 
 `app/layout.tsx` monta una sola cáscara para toda la aplicación: la barra lateral (`components/Nav.tsx`) fija a la izquierda y el área de trabajo desplazándose al lado.
 
@@ -153,6 +170,24 @@ Reglas del riel:
 - El ítem activo lleva `aria-current="page"`, y cada ícono es `aria-hidden`: lo que anuncia el lector de pantalla es el rótulo, no el dibujo.
 
 Dentro de un área, `components/SubNav.tsx` resuelve la navegación horizontal entre secciones; hoy solo la usa Configuración.
+
+### 3.6 El registro: un solo dibujo para las listas
+
+`components/Registro.tsx` tiene las piezas con que se dibuja **toda** lista de la aplicación: hoy los expedientes (`02-expedientes.md` §2.9), los tipos de proceso y los agentes; mañana los plazos, los escritos y la historia. Nació en el listado de expedientes y se extrajo cuando hubo una segunda lista que quería lo mismo.
+
+| Pieza | Qué es |
+|---|---|
+| `Registro` | Un cuadro por elemento: papel de `--superficie`, línea de `--linea`, esquinas redondeadas. Con `href` toda la fila es el enlace a la ficha —nunca un "ver más"— y se tiñe de `--acento-suave` al pasar el mouse o al recibir el foco. Escalona la entrada con `.aparece`, que se apaga con `prefers-reduced-motion`. |
+| `claseRejillaRegistro` | La rejilla de dos columnas: a la izquierda qué es el elemento, a la derecha cómo está. Es una rejilla y no dos bloques sueltos para que las filas queden enfrentadas sin depender de que midan lo mismo; en pantalla angosta se apila. |
+| `Rotulo` | La primera línea en versalitas: el número del expediente, la cantidad de etapas, el rol del agente. |
+| `Meta` y `Punto` | La línea de metadatos, en el gris secundario y separada por puntos finos. |
+| `Semaforo` | El estado: un punto de color y dos palabras. |
+
+**La regla del semáforo: el color avisa, el hover explica.** En la lista solo se ven el punto y la etiqueta ("En trámite", "Activo", "Sin etapas", "Caduco"); el porqué —"sin movimiento desde el 11/05/2026", "está activo pero no tiene etapas", "no se ofrece en las altas nuevas"— viaja en el `title` y aparece al pasar el mouse. Así una lista larga se recorre por color, sin texto que compita, y nada queda sin explicación. Como el hover no existe para el lector de pantalla ni en una pantalla táctil, el detalle va además en un `sr-only`, y lo que es importante se explica completo en la ficha.
+
+Los cuatro tonos significan lo mismo en todas las pantallas: **verde** lo que está en curso y en regla, **amarillo** lo que pide atención, **rojo** lo consumado y malo, **gris** lo que no está corriendo. Un solo elemento con color por fila: el resto del cuadro va en grises, incluida la explicación del propio color.
+
+Cada área traduce su dominio a esos tonos en un solo lugar —`components/SituacionProcesal.tsx` para la caducidad de instancia, `estadoDelTipo` y `estadoDelModo` en las páginas de Configuración—, así que el lenguaje visual no se decide en el JSX.
 
 ## 4. Motor de plazos
 

@@ -59,7 +59,8 @@ erDiagram
 `id`, `owner_id`, `tipo` (cliente | contraparte | letrado | perito | juzgado | mediador | escribano | otro), `nombre`, `documento`, `domicilio_real`, `domicilio_electronico`, `telefono`, `email`, `notas`, `es_cliente bool`, `datos_facturacion jsonb`, `deleted_at`.
 
 **courts**: juzgados y secretarías.
-`id`, `owner_id`, `centro_judicial` (capital | concepcion | monteros), `fuero`, `nominacion`, `secretaria`, `direccion`, `telefono`, `horario_mesa`, `juez`, `secretario`, `nombre_sae` (como aparece en el Portal, para vinculación).
+`id`, `owner_id`, `centro_judicial` (capital | concepcion | monteros), `fuero`, `nominacion`, `secretaria`, `oficina_gestion` (Oficina de Gestión Asociada que lo atiende), `direccion`, `telefono`, `horario_mesa`, `juez`, `secretario`, `nombre_sae` (como aparece en el Portal, para vinculación).
+Hasta que exista esta tabla, el expediente guarda el juzgado, la nominación y la OGA en sus propias columnas (ver `cases`): son campos libres con sugerencias, y la migración consiste en crear un `courts` por cada combinación distinta y reemplazarlos por `court_id`.
 
 ### Configuración del abogado
 
@@ -85,8 +86,9 @@ Un tipo de proceso referenciado por algún expediente no se borra: se desactiva 
 ### Expedientes
 
 **cases**
-`id`, `owner_id`, `numero`, `anio`, `caratula` (normalizada), `caratula_actor`, `caratula_demandado`, `caratula_objeto` (componentes, para buscar por parte y rearmarla), `court_id`, `centro_judicial`, `fuero`, `process_template_id`, `materia`, `rol_cliente`, `client_id`, `estado`, `etapa_actual` (clave de `process_template_stages`), `etapa_desde`, `monto numeric`, `moneda`, `monto_fecha`, `fecha_inicio_mediacion`, `fecha_demanda`, `fecha_sentencia`, `fecha_firmeza`, `etiquetas text[]`, `notas`, `ultima_entrada_at`, `ultima_sync_sae_at`, `seguido_en_sae bool`, `deleted_at`.
+`id`, `owner_id`, `numero`, `anio`, `caratula` (normalizada), `caratula_actor`, `caratula_demandado`, `caratula_objeto` (componentes, para buscar por parte y rearmarla), `court_id`, `juzgado_tipo`, `juzgado_numero`, `oficina_gestion` (los tres, provisorios, hasta que exista `courts`), `centro_judicial`, `fuero`, `process_template_id`, `materia`, `rol_cliente`, `client_id`, `clase` (principal | incidente), `estado`, `etapa_actual` (clave de `process_template_stages`), `etapa_desde`, `ultimo_movimiento` (fecha del último movimiento útil, de la que se cuenta la caducidad), `caducidad_declarada` (fecha, null), `audiencia_tipo`, `audiencia_fecha`, `audiencia_hora` (la audiencia fijada, hasta que exista `events`), `monto numeric`, `moneda`, `monto_fecha`, `fecha_inicio_mediacion`, `fecha_demanda`, `fecha_sentencia`, `fecha_firmeza`, `etiquetas text[]`, `notas`, `ultima_entrada_at`, `ultima_sync_sae_at`, `seguido_en_sae bool`, `deleted_at`.
 Índice único `(owner_id, court_id, numero, anio)`.
+La situación frente a la caducidad de instancia (en trámite | para caducidad | caduco) **no se guarda**: se deduce de `clase`, `estado`, `ultimo_movimiento` y `caducidad_declarada` (docs/02-expedientes.md §2.11). Un estado derivado que se persiste queda viejo solo con que pase el tiempo.
 
 **case_parties**
 `id`, `case_id`, `contact_id`, `rol` (actor | demandado | tercero | citado_garantia | sindico | perito | letrado_contraria | mediador | otro), `representa_a` (contact_id, null), `notas`.
@@ -214,7 +216,8 @@ Un tipo de proceso referenciado por algún expediente no se borra: se desactiva 
 - `process_templates` + `process_template_stages`: ordinario, sumarísimo, sumario, ejecutivo, monitorio, expropiación, sucesorio, desalojo y personalizado (sin etapas), `origen = ejemplo`.
 - `writing_templates`: escritos básicos, `origen = ejemplo`.
 - `subject_matters`: consumidor, daños y perjuicios, prescripción, contratos, locaciones, sucesiones, ejecuciones.
-- `courts`: juzgados civiles y comerciales de Capital, Concepción y Monteros **[a completar]**.
+- `courts`: juzgados civiles y comerciales de Capital, Concepción y Monteros, con su Oficina de Gestión Asociada **[a completar]**.
+- `cases`: siete expedientes de ejemplo elegidos para que se vea todo el semáforo de la caducidad (§2.11 de `02-expedientes.md`): dos en trámite, uno a días de cumplir el plazo, un incidente y un principal para caducidad, uno con la caducidad declarada y uno con sentencia. Editables y borrables como el resto de los ejemplos.
 - `norms`: Ley 9531 y modificatorias, Ley 7844, Decreto 2960/2009, Ley 5480, Ley 6238, CCyC, Ley 24.240; `activa = false` hasta que el abogado las active.
 - `agents` + `agent_sources`: Procesalista, Analista, Redactor, Daños, Consumidor; `origen = ejemplo`, con fuentes sugeridas pero sin activar.
 - `guides` + `guide_checklist_items`: guías semilla, `origen = ejemplo`.

@@ -72,11 +72,14 @@ function SelectFiltro({
 export function ListadoExpedientes({
   expedientes,
   tipos,
+  hoy,
   filtrosIniciales,
   aviso,
 }: {
   expedientes: Expediente[];
   tipos: TipoProceso[];
+  /** Día de hoy en 'YYYY-MM-DD', para el semáforo de caducidad de cada fila. */
+  hoy: string;
   filtrosIniciales: Filtros;
   /** Aviso de la acción anterior, renderizado en el servidor. */
   aviso?: ReactNode;
@@ -97,6 +100,8 @@ export function ListadoExpedientes({
     if (filtros.estado) parametros.set("estado", filtros.estado);
     if (filtros.materia) parametros.set("materia", filtros.materia);
     if (filtros.fuero) parametros.set("fuero", filtros.fuero);
+    if (filtros.juzgado) parametros.set("juzgado", filtros.juzgado);
+    if (filtros.oga) parametros.set("oga", filtros.oga);
     const cadena = parametros.toString();
     window.history.replaceState(null, "", cadena ? `?${cadena}` : window.location.pathname);
   }, [filtros]);
@@ -149,6 +154,18 @@ export function ListadoExpedientes({
             </span>
 
             <SelectFiltro
+              etiqueta="Juzgado"
+              valor={filtros.juzgado}
+              opciones={opciones.juzgados}
+              onChange={(valor) => cambiar("juzgado", valor)}
+            />
+            <SelectFiltro
+              etiqueta="OGA"
+              valor={filtros.oga}
+              opciones={opciones.ogas}
+              onChange={(valor) => cambiar("oga", valor)}
+            />
+            <SelectFiltro
               etiqueta="Estado"
               valor={filtros.estado}
               opciones={opciones.estados}
@@ -194,6 +211,7 @@ export function ListadoExpedientes({
                 key={expediente.id}
                 expediente={expediente}
                 tipo={porId.get(expediente.tipoProcesoId)}
+                hoy={hoy}
                 orden={orden}
               />
             ))}
@@ -205,7 +223,7 @@ export function ListadoExpedientes({
               Ningún expediente coincide con la búsqueda.
             </p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Se busca por número, carátula, actor, demandado, objeto y materia.
+              Se busca por número, carátula, actor, demandado, objeto, materia, juzgado y OGA.
             </p>
             <button
               type="button"

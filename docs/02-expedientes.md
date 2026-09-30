@@ -24,7 +24,12 @@ La **carátula** se escribe o se pega como venga del Portal del SAE: el sistema 
 | Carátula | "Actor c/ Demandado s/ Objeto". Se escribe o se pega en cualquier variante; el sistema la normaliza y guarda sus tres componentes por separado. |
 | Centro judicial | Capital, Concepción, Monteros. |
 | Fuero | Civil y Comercial Común, Civil en Documentos y Locaciones, Cobros y Apremios, Familia y Sucesiones, Paz **[a confirmar denominaciones actuales]**. |
-| Juzgado y secretaría | Referencia a un contacto de tipo juzgado. |
+| Juzgado | Tipo de juzgado y nominación ("Civil y Comercial Común VI"). Hoy son dos campos libres con sugerencias; cuando exista el catálogo de juzgados de Configuración pasan a ser una referencia, con la secretaría. |
+| Oficina de Gestión Asociada | OGA que atiende al juzgado. Campo libre que sugiere las que ya se usaron; con el catálogo de juzgados la trae el juzgado elegido. |
+| Clase | Principal o incidente. Define el plazo de caducidad de instancia (§2.11). |
+| Último movimiento | Fecha del último movimiento útil, de la que se cuenta la caducidad. Hoy se carga a mano; cuando exista la historia del expediente la escribe la última entrada. |
+| Caducidad declarada | Fecha en que el juzgado declaró la caducidad de instancia, si la declaró. |
+| Audiencia fijada | Tipo, fecha y hora de la audiencia que fijó el juzgado. Sin fecha no hay audiencia fijada. Pasa a la agenda cuando exista. |
 | **Tipo de proceso** | Elegido del catálogo del abogado (ver abajo). Define etapas, plazos típicos, escritos típicos, guías y agentes sugeridos. |
 | Materia | Especialidad principal de la causa: daños y perjuicios, consumidor, contratos, prescripción, locaciones, sucesiones, ejecuciones, otra. Editable por el abogado. Sirve para sugerir agentes por especialidad. |
 | Rol del cliente | Actor, demandado, tercero, heredero, acreedor, otro. |
@@ -165,34 +170,46 @@ Cabecera fija de la ficha con:
 - **Por parte**: actor o demandado, y también objeto y materia.
 - **Sin tildes ni mayúsculas**: "nicolas" encuentra a "Nicolás", "danos" encuentra "Daños". La consulta y el dato se reducen los dos a una forma comparable (`normalizarParaBuscar`, `10-normalizacion-de-texto.md`), así que da igual cómo se escriba de los dos lados.
 - **Por palabras, en cualquier orden**: "juan perez" encuentra "Pérez, Juan"; se exige que todas las palabras estén en el mismo expediente.
-- **Filtra en la misma tecla**: el filtrado corre en el cliente sobre la lista ya cargada, sin ida y vuelta al servidor. La consulta y los filtros se reflejan en la URL (`?q=`, `?estado=`, `?materia=`, `?fuero=`) para poder compartir o volver a una vista, y un enlace con esos parámetros abre el listado ya filtrado.
+- **Por juzgado y por OGA**: el juzgado con su nominación y la Oficina de Gestión Asociada también entran en la búsqueda, además de tener su propio filtro.
+- **Filtra en la misma tecla**: el filtrado corre en el cliente sobre la lista ya cargada, sin ida y vuelta al servidor. La consulta y los filtros se reflejan en la URL (`?q=`, `?estado=`, `?materia=`, `?fuero=`, `?juzgado=`, `?oga=`) para poder compartir o volver a una vista, y un enlace con esos parámetros abre el listado ya filtrado.
 
-**Filtros del listado (hecho).** Tres desplegables junto al buscador —**estado**, **materia** y **fuero**— que se combinan entre sí y con la búsqueda. Solo ofrecen los valores que existen en los expedientes cargados, con la cantidad de cada uno: un desplegable con los siete estados posibles cuando el estudio usa dos invita a elegir combinaciones que no devuelven nada. Cuando hay algo filtrado aparecen el conteo ("3 de 12") y un botón para limpiar.
+**Filtros del listado (hecho).** Cinco desplegables junto al buscador —**juzgado**, **OGA**, **estado**, **materia** y **fuero**— que se combinan entre sí y con la búsqueda. Solo ofrecen los valores que existen en los expedientes cargados, con la cantidad de cada uno: un desplegable con los siete estados posibles cuando el estudio usa dos invita a elegir combinaciones que no devuelven nada. Cuando hay algo filtrado aparecen el conteo ("3 de 12") y un botón para limpiar.
+
+El filtro por juzgado compara el juzgado **con su nominación**: la VI y la IV del mismo fuero son dos juzgados distintos y no se mezclan. Mientras no exista el catálogo de juzgados de Configuración, los valores salen de lo que se cargó en los expedientes, así que dos formas de escribir el mismo juzgado son dos entradas del desplegable; la normalización del texto al guardar es lo que evita que eso pase seguido.
 
 Pendiente:
 
-- **Filtro por juzgado**: requiere el catálogo de juzgados y secretarías de Configuración, que todavía no existe. Hoy se filtra por fuero y el centro judicial se ve en cada fila.
 - Filtrar también por etiqueta cuando existan las etiquetas.
 - Texto completo dentro de la historia de un expediente o de todo el estudio.
 - Búsqueda semántica (mismo índice que usa el RAG) para preguntas del tipo "¿en qué expedientes se discutió la prescripción bienal?".
 
 ### 2.9 Listado y tablero
 
-**Hecho.** Un cuadro por expediente, separados entre sí, con tres niveles de lectura:
+**Hecho.** Un cuadro por expediente —la burbuja que el abogado lee antes de entrar—, separados entre sí, sobre una **rejilla de dos columnas y tres filas**: lo que describe la causa a la izquierda, lo que describe su estado a la derecha, y cada fila enfrentada con la que le corresponde.
 
-1. **Identificación**: número en versalitas, fuero y centro judicial, y el estado con su color.
-2. **Identidad de la causa**: la carátula con su estructura visible —las partes en negrita, los conectores "c/" y "s/" en itálica apagada, el objeto en tono más liviano—. Las dos partes se muestran igual: el rol del cliente se consulta en la ficha, no se marca en el listado.
-3. **Situación procesal**: tipo de proceso, etapa actual y materia.
+| | Izquierda: de qué expediente se trata | Derecha: situación procesal (§2.11) |
+|---|---|---|
+| 1 | Número en versalitas | |
+| 2 | **Carátula** con su estructura visible: las partes en negrita, los conectores "c/" y "s/" en itálica apagada, el objeto en tono más liviano. Las dos partes se muestran igual: el rol del cliente se consulta en la ficha | **Semáforo** con su color: en trámite, para caducidad, caduco |
+| 3 | **Dónde tramita**: juzgado con su nominación, Oficina de Gestión Asociada y centro judicial, y a continuación la **audiencia fijada** con su tipo, fecha y hora si hay una | **Etapa** en que quedó el expediente |
 
-El color del estado es semántico y aparece en un punto junto a la etiqueta: verde en trámite, celeste en mediación, ámbar suspendido, índigo con sentencia, violeta en ejecución, gris archivado y **rojo paralizado**, que es el que implica riesgo de caducidad de instancia.
+Es una rejilla y no dos columnas sueltas porque las filas tienen que quedar enfrentadas: el semáforo a la altura de la carátula y la etapa a la del juzgado, sin depender de que los dos bloques midan lo mismo. La tercera fila arranca separada de la carátula, para que la identidad de la causa se lea como un bloque y el trámite como otro.
 
-Encabezado propio del área, fijo al hacer scroll, con el buscador, los filtros y la acción de alta.
+**El detalle del movimiento no va en la burbuja**: en el listado alcanza el color, y de dónde sale ese color —"sin movimiento desde el 11/05/2026", "faltan 6 días para la caducidad", "caducidad declarada el 12/06/2026"— aparece al pasar el mouse por el semáforo y explicado en la ficha. Así el único elemento que compite por atención en cada burbuja es el que avisa.
+
+**No se muestran** la materia ni el tipo de proceso: el tipo ya surge de la carátula y la materia es un dato de la ficha, donde sirve para sugerir agentes. Ese lugar lo ocupa lo que el abogado necesita para decidir si tiene que actuar hoy.
+
+Una audiencia cuya fecha ya pasó no se muestra en la burbuja —no es una audiencia fijada— pero sí en la ficha, marcada como pasada: la burbuja es para lo que queda por hacer.
+
+En pantalla angosta las dos columnas se apilan en el orden de la rejilla. Encabezado propio del área, fijo al hacer scroll, con el buscador, los filtros y la acción de alta.
+
+Este dibujo dejó de ser propio del área: vive en `components/Registro.tsx` y lo usan también las listas de tipos de proceso y de agentes, con la misma regla de color y de hover (`07-arquitectura.md` §3.6).
 
 Pendiente:
 
 - Listado con columnas configurables: carátula, juzgado, tipo de proceso, etapa, materia, próximo vencimiento, última entrada, estado, última sincronización.
-- Filtros guardados ("con vencimiento esta semana", "en prueba", "sin movimiento hace 60 días", "sin sincronizar hace 3 días").
-- Alerta de expedientes sin movimiento por más de N días, para prevenir la caducidad de instancia **[a confirmar plazos de caducidad en Ley 9531]**.
+- Filtros guardados ("con vencimiento esta semana", "en prueba", "para caducidad", "sin sincronizar hace 3 días").
+- Que el último movimiento lo escriba la historia del expediente en lugar de cargarse a mano.
 
 ### 2.10 Configuración a cargo del abogado
 
@@ -211,6 +228,30 @@ Pendiente:
 
 Todo lo anterior viene con ejemplos iniciales que el abogado puede editar o borrar.
 
+### 2.11 Caducidad de instancia
+
+**Hecho.** Es la primera regla de derecho procesal que el sistema aplica sobre el expediente, y la que contesta la pregunta del listado: *¿este expediente se está cayendo?*
+
+| Situación | Color | Cuándo |
+|---|---|---|
+| **En trámite** | verde | Hay instancia en curso y el expediente se movió dentro del plazo. |
+| **Para caducidad** | amarillo | Se cumplieron los meses sin movimiento: **seis** en el principal, **tres** en los incidentes **[a confirmar contra el texto vigente de la Ley 9531]**. También el expediente que el abogado marcó como paralizado, aunque las fechas no lleguen al plazo: esa marca es suya. |
+| **Caduco** | rojo | El juzgado declaró la caducidad. |
+| El estado cargado | gris | No hay instancia en curso que pueda caducar: en mediación previa, suspendido, con sentencia, en ejecución o archivado. |
+
+Reglas del cómputo (`src/lib/procesal/caducidad.ts`, con tests):
+
+- **La situación no se guarda: se deduce.** Lo que se guarda son hechos —la fecha del último movimiento y, si ocurrió, la fecha en que el juzgado declaró la caducidad—. Un estado derivado que se persiste queda viejo solo con que pase el tiempo.
+- El plazo corre por **meses corridos**, no por días hábiles, así que no interviene el calendario de feriados. Si el día no existe en el mes de destino se usa el último de ese mes (31/03 + 6 meses = 30/09), como manda el artículo 6 del Código Civil y Comercial.
+- El orden de las reglas es el del derecho: la caducidad declarada tapa todo lo demás; después se ve si hay instancia en curso; solo entonces se cuentan los meses.
+- Si el expediente no tiene fecha de último movimiento —los que se cargaron antes de que existiera el campo—, se usa la fecha desde la que está en la etapa actual, y en última instancia la de carga.
+- Faltando treinta días o menos, el detalle avisa cuántos quedan aunque el semáforo siga en verde.
+- El día de hoy entra como dato desde el servidor y no se lee del reloj en cada fila: el semáforo tiene que dar lo mismo en el HTML inicial y después de la hidratación, y los tests necesitan fijarlo.
+
+Dónde se ve: en el **listado**, el color del semáforo, con el detalle al pasar el mouse (§2.9); en la **ficha**, el semáforo y el cómputo escrito —de qué fecha se cuenta, cuándo se cumple el plazo y cuántos días faltan—, que es lo que el abogado necesita para decidir si impulsa el expediente hoy.
+
+Pendiente: que los plazos sean configurables junto con el catálogo de plazos, que el último movimiento lo escriba la historia del expediente, y que un expediente para caducidad genere una tarea en Agenda en lugar de esperar a que el abogado lo vea en el listado.
+
 ## 3. Funcionalidad
 
 ### MVP
@@ -228,7 +269,9 @@ Todo lo anterior viene con ejemplos iniciales que el abogado puede editar o borr
 - [ ] Panel de agentes seleccionados por expediente e informe de estado bajo demanda (hoy la ficha sugiere agentes por materia y tipo de proceso).
 - [ ] Vencimientos y tareas generados desde la historia, visibles en Agenda.
 - [x] Buscador del listado por número y por partes, sin tildes ni mayúsculas.
-- [ ] Vista "estado del expediente", filtros guardados y alerta de inactividad (hoy hay listado con buscador y ficha básica).
+- [x] Filtros por juzgado, OGA, estado, materia y fuero, combinables y reflejados en la URL.
+- [x] Semáforo de caducidad de instancia en el listado y en la ficha (§2.11).
+- [ ] Vista "estado del expediente" y filtros guardados (hoy hay listado con buscador, filtros y ficha básica).
 
 ### v2
 
