@@ -142,6 +142,8 @@ La situación frente a la caducidad de instancia (en trámite | para caducidad |
 **fees_expenses**
 `id`, `owner_id`, `case_id`, `tipo` (gasto | honorario_pactado | honorario_regulado), `concepto`, `monto`, `moneda`, `fecha`, `estado`, `comprobante_document_id` (null), `instancia` (null), `comunicado_caja bool`.
 
+Implementada en la Fase 1 (docs/02-expedientes.md §2.12) con dos precisiones: `concepto` es un **catálogo cerrado** y no texto libre, porque es la columna por la que se promedia el costo por materia; y `monto` se guarda **en centavos**, como entero, para que la suma de las partidas cierre al peso. `estado` toma `previsto`, `pagado_estudio`, `rendido` y `pagado_cliente`.
+
 ### IA
 
 **agents**

@@ -108,7 +108,8 @@ Cuando llega una notificación (desde el conector SAE o a mano), el abogado o el
 - [ ] Vencimientos creados desde una actuación del expediente (ver documento 02 y 05).
 - [ ] Recordatorios en la aplicación y por correo.
 - [ ] Contactos con vinculación a expedientes.
-- [ ] Gastos y honorarios por expediente con estados básicos.
+- [x] Gastos y honorarios por expediente con estados básicos, en la pestaña Contabilidad de la ficha (docs/02-expedientes.md §2.12).
+- [ ] Totales por cliente y pendientes de cobro, que cruzan los expedientes de un mismo cliente.
 
 ### v2
 

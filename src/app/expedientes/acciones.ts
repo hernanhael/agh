@@ -5,12 +5,17 @@ import { redirect } from "next/navigation";
 import {
   actualizarExpediente,
   crearExpediente,
+  crearGasto,
   eliminarExpediente,
+  eliminarGasto,
   type CentroJudicial,
   type ClaseExpediente,
+  type ConceptoGasto,
   type EntradaExpediente,
   type EstadoExpediente,
+  type EstadoGasto,
   type RolCliente,
+  type TipoGasto,
 } from "@/lib/datos";
 
 /** Acciones del área Expedientes. Ver la nota de seguridad en ../configuracion/acciones.ts. */
@@ -58,7 +63,10 @@ export async function guardarExpediente(datos: FormData): Promise<void> {
   const id = texto(datos, "id");
   const resultado = await actualizarExpediente(id, entrada(datos));
   revalidatePath("/expedientes");
-  revalidatePath(`/expedientes/${id}`);
+  // El expediente es un `layout` con una pestaña por ruta: se revalida el
+  // layout para que se renueven la cabecera y todas las pestañas, y no solo
+  // una de ellas.
+  revalidatePath(`/expedientes/${id}`, "layout");
   const parametro = resultado.ok
     ? `hecho=${encodeURIComponent("Cambios guardados.")}`
     : `error=${encodeURIComponent(resultado.error)}`;
@@ -72,4 +80,38 @@ export async function borrarExpediente(datos: FormData): Promise<void> {
     ? `hecho=${encodeURIComponent(`Se borró "${resultado.valor}".`)}`
     : `error=${encodeURIComponent(resultado.error)}`;
   redirect(`/expedientes?${parametro}`);
+}
+
+/*
+ * Contabilidad del expediente (docs/02-expedientes.md §2.12). Las dos acciones
+ * vuelven a la pestaña de Contabilidad con el aviso en la URL, que es de donde
+ * lo lee el cuadro del expediente.
+ */
+
+export async function agregarGasto(datos: FormData): Promise<void> {
+  const expedienteId = texto(datos, "expedienteId");
+  const resultado = await crearGasto({
+    expedienteId,
+    tipo: texto(datos, "tipo") as TipoGasto,
+    concepto: texto(datos, "concepto") as ConceptoGasto,
+    detalle: texto(datos, "detalle"),
+    importe: texto(datos, "importe"),
+    fecha: texto(datos, "fecha"),
+    estado: texto(datos, "estado") as EstadoGasto,
+  });
+  revalidatePath(`/expedientes/${expedienteId}`, "layout");
+  const parametro = resultado.ok
+    ? `hecho=${encodeURIComponent("Partida agregada.")}`
+    : `error=${encodeURIComponent(resultado.error)}`;
+  redirect(`/expedientes/${expedienteId}/contabilidad?${parametro}`);
+}
+
+export async function borrarGasto(datos: FormData): Promise<void> {
+  const expedienteId = texto(datos, "expedienteId");
+  const resultado = await eliminarGasto(texto(datos, "id"));
+  revalidatePath(`/expedientes/${expedienteId}`, "layout");
+  const parametro = resultado.ok
+    ? `hecho=${encodeURIComponent(`Se borró "${resultado.valor}".`)}`
+    : `error=${encodeURIComponent(resultado.error)}`;
+  redirect(`/expedientes/${expedienteId}/contabilidad?${parametro}`);
 }

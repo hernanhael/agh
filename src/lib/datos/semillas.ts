@@ -1,5 +1,5 @@
 import { clavear } from "@/lib/formato";
-import type { Agente, Datos, EtapaProceso, TipoProceso } from "./tipos";
+import type { Agente, Datos, EtapaProceso, Gasto, TipoProceso } from "./tipos";
 
 /**
  * Ejemplos que trae el sistema, editables y borrables por el abogado
@@ -528,5 +528,109 @@ export function datosIniciales(): Datos {
     tiposProceso: TIPOS_PROCESO_EJEMPLO,
     agentes: AGENTES_EJEMPLO,
     expedientes: EXPEDIENTES_EJEMPLO,
+    gastos: GASTOS_EJEMPLO,
   });
 }
+
+/**
+ * Contabilidad de ejemplo, toda sobre el expediente Rogel: un ordinario de
+ * daños que ya pagó lo del inicio y tiene la pericia y los honorarios
+ * previstos (docs/02-expedientes.md §2.12).
+ *
+ * Sirve para ver de qué se compone el costo de un juicio y cómo se separa lo
+ * pagado de lo estimado. **Los importes son inventados**: no son aranceles
+ * reales, son un ejemplo editable como cualquier otra semilla.
+ */
+export const GASTOS_EJEMPLO: Gasto[] = [
+  {
+    id: "ga-rogel-mediacion",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "mediacion",
+    detalle: "Arancel de la mediación prejudicial obligatoria.",
+    importe: 2_500_000,
+    moneda: "ARS",
+    fecha: "2026-08-20",
+    estado: "pagado_cliente",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-tasa",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "tasa_justicia",
+    detalle: "Tasa de justicia sobre el monto reclamado en la demanda.",
+    importe: 18_500_000,
+    moneda: "ARS",
+    fecha: "2026-09-01",
+    estado: "pagado_cliente",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-bono",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "bono",
+    detalle: "Bono de movilidad del inicio de demanda.",
+    importe: 1_200_000,
+    moneda: "ARS",
+    fecha: "2026-09-01",
+    estado: "pagado_estudio",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-aportes",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "aportes_caja",
+    detalle: "Aportes a la Caja de Previsión por inicio de juicio.",
+    importe: 950_000,
+    moneda: "ARS",
+    fecha: "2026-09-02",
+    estado: "pagado_estudio",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-cedula",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "notificaciones",
+    detalle: "Cédula de traslado de la demanda al domicilio del demandado.",
+    importe: 450_000,
+    moneda: "ARS",
+    fecha: "2026-09-12",
+    estado: "rendido",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-pericia",
+    expedienteId: "ex-rogel",
+    tipo: "gasto",
+    concepto: "pericia",
+    detalle: "Anticipo de gastos del perito médico, para cuando se abra a prueba.",
+    importe: 15_000_000,
+    moneda: "ARS",
+    fecha: "2026-11-15",
+    estado: "previsto",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "ga-rogel-honorarios",
+    expedienteId: "ex-rogel",
+    tipo: "honorario_pactado",
+    concepto: "honorarios",
+    detalle: "Honorarios pactados con el cliente en el convenio inicial.",
+    importe: 60_000_000,
+    moneda: "ARS",
+    fecha: "2026-08-20",
+    estado: "previsto",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+];

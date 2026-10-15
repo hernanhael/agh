@@ -83,8 +83,17 @@ app/
   agenda/            calendario, vencimientos, contactos, honorarios
   expedientes/       listado, alta con tipo de proceso, ficha, historia, editor de escritos
     nuevo/           alta con previsualización de carátula
-    [id]/            ficha
-    acciones.ts      acciones de servidor del área
+    [id]/            ficha por pestañas: una ruta por pestaña (02-expedientes.md §2.13)
+      datos/           metadatos del expediente y formulario de edición
+      partes/          actor, demandado y de qué lado está el cliente
+      agenda/          audiencia fijada y plazo de caducidad corriendo
+      historia/        línea de tiempo del expediente (§2.3)
+      resumen/         estado de la causa con el cómputo de caducidad (§2.7)
+      contabilidad/    costo del juicio: partidas, totales y desglose (§2.12)
+      ia/              agentes que intervienen en el expediente (§2.6)
+      pestanas.ts      el orden de las pestañas, sus íconos y sus teclas de función (con test)
+      cargar.ts        lecturas compartidas por el cuadro y sus pestañas
+    acciones.ts      acciones de servidor del área, expediente y contabilidad
   ia/                conversaciones e informes (los agentes se configuran en configuracion/)
   guias/             navegación y lectura
   configuracion/     área transversal de catálogos del abogado
@@ -98,11 +107,14 @@ components/
   SubNav.tsx         navegación entre secciones de un área
   Registro.tsx       el dibujo de las listas: cuadro, rejilla, rótulo y semáforo (§3.6)
   SituacionProcesal.tsx  la caducidad de instancia traducida a los tonos del registro
+  AvisoRuta.tsx      el aviso de "cambios guardados" leído de la URL, para los `layout`
   ui.tsx             clases y piezas compartidas: tarjeta, campo, aviso, marca, botones
 lib/
   plazos/            motor de plazos (puro, con tests)
   procesal/          reglas procesales sobre el expediente: caducidad de instancia,
                      audiencia fijada (puro, con tests; ver 02-expedientes.md §2.11)
+  contabilidad/      importes en centavos y totales del expediente (puro, con tests;
+                     ver 02-expedientes.md §2.12)
   formato/           normalización de texto (puro, con tests; ver 10-normalizacion-de-texto.md)
   datos/             repositorios de configuración y expedientes; normalizan al guardar
   rag/               fragmentación, embeddings, búsqueda híbrida filtrada por agente y expediente

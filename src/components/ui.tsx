@@ -160,3 +160,70 @@ export function mensajes(parametros: Record<string, string | string[] | undefine
     Array.isArray(valor) ? valor[0] : valor;
   return { error: uno(parametros.error), hecho: uno(parametros.hecho) };
 }
+
+/**
+ * Un dato de solo lectura: rótulo chico arriba, valor debajo. Va dentro de una
+ * `<dl>`, que es lo que arma `Grupo`.
+ */
+export function Dato({
+  rotulo,
+  children,
+  className = "",
+}: {
+  rotulo: string;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const vacio = children === undefined || children === null || children === "";
+  return (
+    <div className={className}>
+      <dt className="text-xs text-zinc-500 dark:text-zinc-500">{rotulo}</dt>
+      <dd className={vacio ? "text-zinc-400 dark:text-zinc-600" : "text-zinc-900 dark:text-zinc-50"}>
+        {vacio ? "—" : children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Bloque de datos con su rótulo: la ficha del expediente se lee por grupos
+ * —identificación, radicación, encuadre, fechas— y no como una lista de
+ * veinte campos seguidos.
+ */
+export function Grupo({
+  titulo,
+  children,
+  className = "",
+}: {
+  titulo: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={className}>
+      <h3 className="rotulo text-zinc-500 dark:text-zinc-500">{titulo}</h3>
+      <dl className="mt-2 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        {children}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Lo que todavía falta construir en esta sección, con el punto del diseño que
+ * lo describe. Es el mismo contrato que `AreaPlaceholder` pero del tamaño de
+ * una pestaña: mientras la Fase 1 esté en curso, cada pantalla dice qué parte
+ * de sí misma no existe todavía, en lugar de parecer terminada.
+ */
+export function Pendientes({ items }: { items: ReadonlyArray<string> }) {
+  return (
+    <div className="mt-6 rounded-md border border-dashed border-linea-fuerte bg-background px-3 py-2.5">
+      <p className="rotulo text-zinc-500 dark:text-zinc-500">Próximo en esta pestaña</p>
+      <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs text-zinc-600 dark:text-zinc-400">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}

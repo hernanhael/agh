@@ -8,6 +8,7 @@ import {
   partirCaratula,
   titulo,
 } from "@/lib/formato";
+import { fechaValida } from "@/lib/plazos/calendario";
 import { ahora, hoy, leerDatos, modificarDatos } from "./almacen";
 import { oficinaGestion } from "./filtros";
 import { correcto, fallo, type Resultado } from "./resultado";
@@ -94,15 +95,6 @@ export async function listarRadicaciones(): Promise<{
 // La búsqueda, los filtros y `identificador` viven en `./filtros`, que es un
 // módulo puro: el listado los usa en el cliente para filtrar mientras se tipea.
 
-/** 'YYYY-MM-DD' si la fecha está bien escrita y existe; si no, cadena vacía. */
-function fecha(valor: string): string {
-  const limpio = normalizarEspacios(valor);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(limpio)) return "";
-  // El constructor de Date corrige los meses y días imposibles ("2026-02-31"
-  // pasa a marzo), así que se compara contra lo que se escribió.
-  return new Date(`${limpio}T00:00:00Z`).toISOString().slice(0, 10) === limpio ? limpio : "";
-}
-
 /** 'HH:mm' en formato de 24 horas; vacía si no lo es. */
 function hora(valor: string): string {
   const limpio = normalizarEspacios(valor);
@@ -129,7 +121,7 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
   const [numero, anio] = identificacion ? identificacion.split("/") : ["", ""];
   // Sin fecha no hay audiencia fijada: el tipo y la hora sueltos serían un
   // resto de una audiencia que ya pasó o que se dio de baja.
-  const audienciaFecha = fecha(entrada.audienciaFecha);
+  const audienciaFecha = fechaValida(entrada.audienciaFecha);
 
   return {
     numero,
@@ -150,8 +142,8 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
     clase: entrada.clase === "incidente" ? ("incidente" as const) : ("principal" as const),
     // Una fecha mal escrita no se guarda a medias: queda vacía y el cómputo de
     // la caducidad cae en la fecha de la etapa, que es un dato que sí existe.
-    ultimoMovimiento: fecha(entrada.ultimoMovimiento),
-    caducidadDeclarada: fecha(entrada.caducidadDeclarada),
+    ultimoMovimiento: fechaValida(entrada.ultimoMovimiento),
+    caducidadDeclarada: fechaValida(entrada.caducidadDeclarada),
     audienciaFecha,
     audienciaTipo: audienciaFecha ? titulo(entrada.audienciaTipo, opciones) : "",
     audienciaHora: audienciaFecha ? hora(entrada.audienciaHora) : "",

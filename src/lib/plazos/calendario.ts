@@ -160,3 +160,18 @@ export function formatoFecha(fecha: FechaISO): string {
   const { y, m, d } = partes(fecha);
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
 }
+
+/**
+ * La fecha en 'YYYY-MM-DD' si está bien escrita y existe; si no, cadena vacía.
+ *
+ * Lo usan los repositorios para no guardar una fecha a medias: una fecha mal
+ * escrita queda vacía y el que la lee resuelve el valor faltante, en lugar de
+ * arrastrar un "2026-02-31" que el resto del sistema tendría que desconfiar.
+ */
+export function fechaValida(valor: string): FechaISO {
+  const limpio = valor.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(limpio)) return "";
+  // El constructor de Date corrige los meses y días imposibles ("2026-02-31"
+  // pasa a marzo), así que se compara contra lo que se escribió.
+  return new Date(`${limpio}T00:00:00Z`).toISOString().slice(0, 10) === limpio ? limpio : "";
+}

@@ -252,6 +252,55 @@ Dónde se ve: en el **listado**, el color del semáforo, con el detalle al pasar
 
 Pendiente: que los plazos sean configurables junto con el catálogo de plazos, que el último movimiento lo escriba la historia del expediente, y que un expediente para caducidad genere una tarea en Agenda en lugar de esperar a que el abogado lo vea en el listado.
 
+### 2.12 Contabilidad del expediente
+
+**Hecho en su parte de registro.** Contesta dos preguntas con los mismos datos, y la segunda es la que le da sentido a la primera:
+
+1. **Hacia atrás: ¿cuánto salió este juicio?** Es lo que hay que rendirle al cliente, y lo que el abogado necesita para saber cuánto puso de su bolsillo.
+2. **Hacia adelante: ¿cuánto sale un juicio de esta materia?** Con la contabilidad de los expedientes ya tramitados, el abogado puede decirle a un cliente nuevo, antes de iniciar, qué orden de magnitud tiene el juicio que viene a consultar. Es el **promedio por materia**, y está pendiente (ver abajo).
+
+Cada **partida** tiene fecha, tipo, concepto, detalle, importe, moneda y situación. Corresponde a la tabla `fees_expenses` de `06-modelo-de-datos.md`, con dos decisiones propias de la implementación:
+
+- **El concepto es un catálogo cerrado, no texto libre**: tasa de justicia, aportes a la Caja de Previsión, bono de movilidad, mediación, pericia, cédulas y notificaciones, edictos, informes, movilidad, sellados, honorarios y otro. Es la columna por la que se va a promediar, y dos formas de escribir "tasa de justicia" serían dos conceptos distintos. Las denominaciones de bonos y aportes están **[a confirmar]** (`08-roadmap.md`, punto 8).
+- **El importe se guarda en centavos**, como entero. Sumar veinte partidas con decimales de punto flotante da un total que no cierra por un centavo, y el total es justamente lo que se le informa al cliente.
+
+| Tipo | Qué es |
+|---|---|
+| Gasto | Erogación del juicio: lo que hubo que pagar para que el expediente avance. |
+| Honorario pactado | Lo convenido con el cliente. |
+| Honorario regulado | Lo que reguló el juzgado. |
+
+Los honorarios van en la misma lista que los gastos porque la pregunta "cuánto sale el juicio" los suma a los dos: para el abogado son ingreso, para el cliente son costo. El `tipo` es lo que permite separarlos, y la pestaña muestra los dos totales por separado además del total.
+
+| Situación | Qué significa |
+|---|---|
+| Previsto | Todavía no se pagó. Es **la parte estimada** del costo, y lo que hace posible proyectar el juicio antes de que termine. |
+| Pagado por el estudio | Lo adelantó el estudio y está pendiente de rendición al cliente (el "a rendir" de `01-agenda.md` §2.6). |
+| Rendido | El cliente ya le reintegró al estudio. |
+| Pagado por el cliente | Lo pagó el cliente directamente; el estudio no puso dinero. |
+
+**Los totales no se guardan: se calculan** (`src/lib/contabilidad`, con tests), por la misma razón que la situación de caducidad se deduce (§2.11). Un total persistido queda viejo con la primera partida que se agregue.
+
+**Cómo se muestra** (pestaña Contabilidad de la ficha): el **costo total** como una sola cifra protagonista —no un gráfico de una barra—; **lo pagado contra el total** como un medidor, que es una proporción contra un límite; el desglose **por concepto** como barras horizontales de una sola serie, ordenadas de mayor a menor, que contestan "en qué se va el dinero"; y la lista de partidas debajo, que es la misma información en forma de tabla. Las barras van en gris: en esta aplicación el color está reservado —el acento marca dónde estoy, el semáforo marca el riesgo procesal— y acá la magnitud ya la lleva el largo de la barra.
+
+Pendiente:
+
+- **Promedio por materia**: cuánto salió en promedio un juicio de daños, de desalojo o de cobro ejecutivo, calculado sobre los expedientes ya cargados y desglosado por concepto, para estimarle el costo a un cliente antes de iniciar. El dato ya se guarda con la forma que esto necesita —`expedienteId` para llegar a la materia del expediente, `concepto` acotado y `fecha` en cada partida—, así que es un cálculo y no un cambio de modelo.
+- **Importes comparables en el tiempo**, que es el problema de fondo del promedio: con la inflación argentina, promediar pesos de 2026 con pesos de 2029 no da una cifra que sirva para cotizar. Hay que reexpresar cada partida a la fecha del cálculo (índice de precios, JUS o UMA) antes de promediar. Por eso toda partida guarda su fecha, incluso la prevista.
+- Comprobante adjunto de cada partida (bucket privado `receipts` de `06-modelo-de-datos.md` §7), que es lo que pide la rendición al cliente.
+- Convenio de honorarios con cuota litis; honorarios regulados con su instancia y la comunicación a la Caja de Previsión (Ley 5480).
+- **Costas**: a cargo de quién quedaron y qué parte del gasto se recupera de la contraria. Hoy la contabilidad dice qué salió, no quién lo termina soportando.
+- Selector de moneda: el campo existe en el modelo, pero en pantalla toda partida es en pesos.
+- Totales por cliente y pendientes de cobro, que son del área Agenda (`01-agenda.md` §2.6).
+
+### 2.13 La ficha por pestañas
+
+La ficha del expediente es un cuadro con una pestaña por cara, y cada pestaña es una **ruta propia** (`/expedientes/<id>/partes`): se puede compartir el enlace de una pestaña y el botón de atrás funciona. `/expedientes/<id>` sin segmento lleva a la primera.
+
+Afuera del cuadro queda la cabecera fija de §2.7 —carátula, número, tipo de proceso, etapa y el semáforo—, visible en cualquier pestaña. Adentro, la tira de pestañas se reparte todo el ancho con ícono y rótulo, y cada una responde además a una **tecla de función**, en el orden de la lista: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7). La tecla va escrita debajo del rótulo porque un atajo que no se ve no existe.
+
+El orden de las pestañas vive en un solo lugar (`src/app/expedientes/[id]/pestanas.ts`) y de ahí salen la tira, los atajos y las rutas, con un test que verifica que las tres cosas no se separen.
+
 ## 3. Funcionalidad
 
 ### MVP
@@ -271,6 +320,10 @@ Pendiente: que los plazos sean configurables junto con el catálogo de plazos, q
 - [x] Buscador del listado por número y por partes, sin tildes ni mayúsculas.
 - [x] Filtros por juzgado, OGA, estado, materia y fuero, combinables y reflejados en la URL.
 - [x] Semáforo de caducidad de instancia en el listado y en la ficha (§2.11).
+- [x] Ficha por pestañas, cada una con su ruta y su tecla de función (§2.13).
+- [x] Contabilidad del expediente: alta y baja de partidas, costo total, pagado contra previsto y desglose por concepto (§2.12).
+- [ ] Promedio de costo por materia sobre los expedientes cargados, con los importes reexpresados para que sean comparables en el tiempo (§2.12).
+- [ ] Comprobante adjunto de cada partida y tratamiento de las costas (§2.12).
 - [ ] Vista "estado del expediente" y filtros guardados (hoy hay listado con buscador, filtros y ficha básica).
 
 ### v2
@@ -279,6 +332,6 @@ Pendiente: que los plazos sean configurables junto con el catálogo de plazos, q
 - [ ] Informe de estado automático al llegar una notificación.
 - [ ] Tipos de proceso para incidentes y cautelares; tipos de proceso y agentes compartibles entre usuarios.
 - [ ] Comparación visual entre versiones de escritos.
-- [ ] Reportes: expedientes por etapa, por juzgado, antigüedad, productividad.
+- [ ] Reportes: expedientes por etapa, por juzgado, antigüedad, productividad, y costo de los juicios por materia.
 - [ ] Portal de clientes de solo lectura.
 - [ ] Multiusuario con asignación de expedientes.

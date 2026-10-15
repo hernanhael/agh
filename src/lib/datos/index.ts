@@ -39,6 +39,13 @@ export {
   type EntradaExpediente,
 } from "./expedientes";
 export {
+  crearGasto,
+  eliminarGasto,
+  listarGastos,
+  listarTodosLosGastos,
+  type EntradaGasto,
+} from "./gastos";
+export {
   aplicarFiltros,
   coincide,
   FILTROS_VACIOS,

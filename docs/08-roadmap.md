@@ -56,7 +56,7 @@ Lo que falta:
 - Alerta por falta de sincronización.
 - Guías: formato, carga, navegación, búsqueda, checklists activables, tabla etapa → guías en los tipos de proceso.
 - Redacción de las 8 a 10 guías de ejemplo, con verificación de los puntos **[a confirmar]** ante fuentes oficiales.
-- Honorarios y gastos por expediente.
+- Honorarios y gastos por expediente: comprobantes adjuntos, costas y **promedio de costo por materia** para cotizarle un juicio a un cliente antes de iniciarlo, con los importes reexpresados para que un peso de 2026 y uno de 2029 sean comparables (docs/02-expedientes.md §2.12; el registro de partidas ya está hecho en la Fase 1).
 
 **Criterio de salida:** una notificación real del Portal aparece en la historia del expediente correcto sin transcripción manual, con vencimiento propuesto y explicación; al cambiar la etapa aparecen la guía y el checklist configurados.
 

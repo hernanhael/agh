@@ -183,6 +183,13 @@ export interface Datos {
   tiposProceso: TipoProceso[];
   agentes: Agente[];
   expedientes: Expediente[];
+  /**
+   * Contabilidad de los expedientes. Opcional porque se agregó después de la
+   * primera versión del almacén: los archivos ya guardados no la tienen, igual
+   * que los campos opcionales de `Expediente`. Quien la lee resuelve el valor
+   * faltante con una lista vacía.
+   */
+  gastos?: Gasto[];
 }
 
 export const CENTROS_JUDICIALES: ReadonlyArray<{ valor: CentroJudicial; etiqueta: string }> = [
@@ -278,3 +285,134 @@ export const MODELOS: ReadonlyArray<{ valor: string; etiqueta: string }> = [
 export function etiquetaEstado(estado: EstadoExpediente | string): string {
   return ESTADOS_EXPEDIENTE.find((candidato) => candidato.valor === estado)?.etiqueta ?? estado;
 }
+
+/**
+ * Etiqueta legible de un valor de cualquiera de las listas de arriba
+ * (centros judiciales, estados, roles, clases). Es la generalización de
+ * `etiquetaEstado`, para las fichas que muestran varias de esas listas.
+ */
+export function etiquetaDe(
+  lista: ReadonlyArray<{ valor: string; etiqueta: string }>,
+  valor: string,
+): string {
+  return lista.find((candidato) => candidato.valor === valor)?.etiqueta ?? valor;
+}
+
+/*
+ * Contabilidad del expediente: `fees_expenses` en docs/06-modelo-de-datos.md,
+ * descrita en docs/01-agenda.md §2.6 y docs/02-expedientes.md §2.12.
+ *
+ * Se guarda en una lista propia y no dentro del expediente, igual que la tabla
+ * del modelo lleva `case_id`: así se puede recorrer la contabilidad de todo el
+ * estudio —que es lo que necesita el promedio por materia— sin abrir cada
+ * expediente.
+ */
+
+/**
+ * Qué es la partida. Los honorarios viajan en la misma lista que los gastos
+ * porque la pregunta que contesta la pestaña —cuánto sale el juicio— los suma
+ * a los dos; el `tipo` es lo que después permite separarlos, porque para el
+ * abogado son ingreso y para el cliente, costo.
+ */
+export type TipoGasto = "gasto" | "honorario_pactado" | "honorario_regulado";
+
+/**
+ * Concepto, de un catálogo cerrado y no de texto libre: es la columna por la
+ * que se va a promediar para estimar cuánto sale un juicio de una materia
+ * (docs/02-expedientes.md §2.12), y dos formas de escribir "tasa de justicia"
+ * serían dos conceptos distintos.
+ *
+ * Las denominaciones de los bonos y aportes están **[a confirmar]** contra lo
+ * que cobran hoy el Colegio y la Caja (docs/08-roadmap.md, punto 8).
+ */
+export type ConceptoGasto =
+  | "tasa_justicia"
+  | "aportes_caja"
+  | "bono"
+  | "mediacion"
+  | "pericia"
+  | "notificaciones"
+  | "edictos"
+  | "informes"
+  | "movilidad"
+  | "sellados"
+  | "honorarios"
+  | "otro";
+
+/**
+ * En qué situación está la partida. `previsto` es la que hace posible el
+ * estimativo: un gasto que todavía no se pagó pero que el juicio va a tener.
+ * `pagado_estudio` es el "a rendir al cliente" de docs/01-agenda.md §2.6.
+ */
+export type EstadoGasto = "previsto" | "pagado_estudio" | "rendido" | "pagado_cliente";
+
+/** Una partida de la contabilidad de un expediente. */
+export interface Gasto {
+  id: string;
+  expedienteId: string;
+  tipo: TipoGasto;
+  concepto: ConceptoGasto;
+  /** Qué fue: "Anticipo de gastos del perito médico". */
+  detalle: string;
+  /**
+   * Importe **en centavos**, entero. Guardar pesos con decimales haría que la
+   * suma de veinte partidas arrastre error de punto flotante, y acá el total
+   * es justamente lo que se le informa al cliente.
+   */
+  importe: number;
+  /**
+   * Moneda del importe. Hoy siempre "ARS" y sin selector en pantalla; el campo
+   * existe porque la tabla del modelo lo tiene y porque un juicio con una
+   * pericia en dólares va a necesitarlo.
+   */
+  moneda: string;
+  /** Fecha del comprobante, o la prevista si todavía no se pagó. */
+  fecha: string;
+  estado: EstadoGasto;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export const TIPOS_GASTO: ReadonlyArray<{ valor: TipoGasto; etiqueta: string }> = [
+  { valor: "gasto", etiqueta: "Gasto" },
+  { valor: "honorario_pactado", etiqueta: "Honorario pactado" },
+  { valor: "honorario_regulado", etiqueta: "Honorario regulado" },
+];
+
+export const CONCEPTOS_GASTO: ReadonlyArray<{ valor: ConceptoGasto; etiqueta: string }> = [
+  { valor: "tasa_justicia", etiqueta: "Tasa de justicia" },
+  { valor: "aportes_caja", etiqueta: "Aportes a la Caja de Previsión" },
+  { valor: "bono", etiqueta: "Bono de movilidad" },
+  { valor: "mediacion", etiqueta: "Mediación: arancel y honorarios" },
+  { valor: "pericia", etiqueta: "Pericia: anticipo y honorarios del perito" },
+  { valor: "notificaciones", etiqueta: "Cédulas, oficios y notificaciones" },
+  { valor: "edictos", etiqueta: "Edictos y publicaciones" },
+  { valor: "informes", etiqueta: "Informes y certificados" },
+  { valor: "movilidad", etiqueta: "Movilidad y viáticos" },
+  { valor: "sellados", etiqueta: "Sellados y fotocopias" },
+  { valor: "honorarios", etiqueta: "Honorarios del abogado" },
+  { valor: "otro", etiqueta: "Otro" },
+];
+
+export const ESTADOS_GASTO: ReadonlyArray<{
+  valor: EstadoGasto;
+  etiqueta: string;
+  detalle: string;
+}> = [
+  {
+    valor: "previsto",
+    etiqueta: "Previsto",
+    detalle: "Todavía no se pagó. Es la parte estimada de lo que va a salir el juicio.",
+  },
+  {
+    valor: "pagado_estudio",
+    etiqueta: "Pagado por el estudio",
+    detalle: "Lo adelantó el estudio y está pendiente de rendición al cliente.",
+  },
+  { valor: "rendido", etiqueta: "Rendido", detalle: "El cliente ya le reintegró al estudio." },
+  {
+    valor: "pagado_cliente",
+    etiqueta: "Pagado por el cliente",
+    detalle: "Lo pagó el cliente directamente; el estudio no puso dinero.",
+  },
+];

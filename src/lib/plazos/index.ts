@@ -8,6 +8,7 @@ export {
   esFeria,
   esFinDeSemana,
   esHabil,
+  fechaValida,
   formatoCorto,
   formatoFecha,
   motivoInhabil,

@@ -2,7 +2,16 @@
 
 Plataforma para asistir al abogado litigante durante la tramitación del proceso judicial en la **Provincia de Tucumán (Argentina)**. El expediente es el eje: su historia se construye dentro de la app (notificaciones traídas del Portal del SAE, escritos redactados allí mismo, documentos, eventos) y agentes de IA configurados por el abogado lo asisten en cada etapa, en dominio cerrado sobre esa historia y las fuentes que él les dio.
 
-**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros por juzgado, OGA, estado, materia y fuero; alta con tipo de proceso; ficha; edición; baja). Primera regla de derecho procesal aplicada: la **caducidad de instancia**, que el listado informa con un semáforo —en trámite, para caducidad a los seis meses (tres en los incidentes), caduco— y la ficha explica con su cómputo (`docs/02-expedientes.md` §2.11). Pendiente para desplegar: Supabase y autenticación — los datos viven hoy en un archivo JSON local (`docs/07-arquitectura.md` §3.1).
+**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros por juzgado, OGA, estado, materia y fuero; alta con tipo de proceso; edición; baja).
+
+La **ficha del expediente** es un cuadro de pestañas, cada una con su propia ruta y su tecla de función: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7) (`docs/02-expedientes.md` §2.13).
+
+Dos reglas propias ya aplicadas sobre el expediente:
+
+- **Caducidad de instancia**: el listado la informa con un semáforo —en trámite, para caducidad a los seis meses (tres en los incidentes), caduco— y la ficha explica su cómputo (`docs/02-expedientes.md` §2.11).
+- **Contabilidad del expediente**: partidas con su concepto y situación, costo total del juicio, lo pagado contra lo previsto y el desglose de en qué se va el dinero. El objetivo de fondo es el promedio de costo por materia, para poder cotizarle un juicio a un cliente antes de iniciarlo (`docs/02-expedientes.md` §2.12).
+
+Pendiente para desplegar: Supabase y autenticación — los datos viven hoy en un archivo JSON local (`docs/07-arquitectura.md` §3.1).
 
 ## Documento de diseño
 
