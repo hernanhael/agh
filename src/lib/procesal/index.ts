@@ -17,3 +17,32 @@ export {
   type SituacionCaducidad,
 } from "./caducidad";
 export { audienciaFijada, type AudienciaFijada } from "./audiencia";
+export {
+  recorridoDeEtapas,
+  type EstadoEtapa,
+  type EtapaRecorrida,
+  type Recorrido,
+} from "./recorrido";
+export {
+  construirHistoria,
+  esImpulsoProcesal,
+  FILTROS_HISTORIA,
+  filtrarHistoria,
+  filtroValido,
+  movimientoDesdeHistoria,
+  ordenarHistoria,
+  type FilaHistoria,
+  type FiltroHistoria,
+} from "./historia";
+export {
+  agruparPartes,
+  clienteDeLaNomina,
+  faltantesDeCaratula,
+  LADOS_PARTE,
+  ladoDeRol,
+  seNotifica,
+  type FaltanteDeCaratula,
+  type GrupoPartes,
+  type LadoParte,
+  type ParteConRepresentantes,
+} from "./partes";

@@ -99,3 +99,48 @@ input[type="search"]::-webkit-search-decoration {
     animation: none;
   }
 }
+
+/*
+ * Impresión de un escrito (docs/02-expedientes.md §2.5).
+ *
+ * La hoja ya trae sus propios márgenes en centímetros, los que configuró el
+ * abogado, así que la página se imprime sin márgenes propios: de lo contrario se
+ * sumarían a los de la hoja y el escrito saldría corrido. La contrapartida
+ * asumida es que cualquier otra pantalla de la aplicación también se imprime sin
+ * margen; la única que está pensada para imprimirse es esta.
+ *
+ * Para imprimir solo la hoja se oculta todo lo demás con `visibility` en lugar
+ * de `display`, que es lo único que funciona sin tener que marcar uno por uno
+ * los contenedores que están arriba de ella en el árbol, y la hoja se lleva al
+ * origen de la página.
+ */
+@page {
+  margin: 0;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  body:has(.hoja-escrito) :not(.hoja-escrito):not(.hoja-escrito *) {
+    visibility: hidden !important;
+  }
+
+  .hoja-escrito,
+  .hoja-escrito * {
+    visibility: visible !important;
+  }
+
+  .hoja-escrito {
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-shadow: none !important;
+  }
+
+  /* Los controles del editor no son parte del escrito. */
+  .no-imprimir {
+    display: none !important;
+  }
+}

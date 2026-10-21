@@ -174,6 +174,12 @@ export interface Estudio {
    * espacios, signos) se aplica siempre porque no admite ambigüedad.
    */
   correccionDeTildes: boolean;
+  /**
+   * Con qué forma salen los escritos. Opcional porque se agregó después de la
+   * primera versión del almacén: quien lo lee resuelve el valor faltante con
+   * `FORMATO_ESCRITO`.
+   */
+  formatoEscrito?: FormatoEscrito;
   actualizadoEn: string;
 }
 
@@ -190,6 +196,10 @@ export interface Datos {
    * faltante con una lista vacía.
    */
   gastos?: Gasto[];
+  /** Nómina de partes de los expedientes. Opcional por lo mismo que los gastos. */
+  partes?: Parte[];
+  /** Historia de los expedientes. Opcional por lo mismo que los gastos. */
+  historia?: EntradaHistoria[];
 }
 
 export const CENTROS_JUDICIALES: ReadonlyArray<{ valor: CentroJudicial; etiqueta: string }> = [
@@ -415,4 +425,309 @@ export const ESTADOS_GASTO: ReadonlyArray<{
     etiqueta: "Pagado por el cliente",
     detalle: "Lo pagó el cliente directamente; el estudio no puso dinero.",
   },
+];
+
+/*
+ * Partes del expediente: `case_parties` en docs/06-modelo-de-datos.md, descrita
+ * en docs/02-expedientes.md §2.14.
+ *
+ * En el modelo, la parte es el cruce entre el expediente y un **contacto**:
+ * `case_parties` guarda el rol y a quién representa, y los datos de la persona
+ * —documento, domicilios, teléfono— viven en `contacts`, que se comparte entre
+ * expedientes. Mientras no exista esa agenda de contactos, la parte guarda esos
+ * datos adentro, igual que el expediente guarda hoy el juzgado en sus propias
+ * columnas hasta que exista `courts`. La migración es la misma: un `contacts`
+ * por cada nombre distinto y acá queda la referencia.
+ */
+
+/**
+ * Qué es esa persona en el juicio. Es la lista de `case_parties.rol`.
+ *
+ * `citado_garantia` es la aseguradora traída al pleito por el demandado, y
+ * `letrado_contraria` el abogado de enfrente: no son partes en sentido estricto
+ * pero son con quienes se litiga, así que van en la misma nómina.
+ */
+export type RolParte =
+  | "actor"
+  | "demandado"
+  | "tercero"
+  | "citado_garantia"
+  | "sindico"
+  | "perito"
+  | "letrado_contraria"
+  | "mediador"
+  | "otro";
+
+/** Una parte del expediente. */
+export interface Parte {
+  id: string;
+  expedienteId: string;
+  rol: RolParte;
+  nombre: string;
+  /** DNI o CUIT, como lo escribe el abogado. */
+  documento: string;
+  /** Dónde vive o tiene su sede: el domicilio real del escrito. */
+  domicilioReal: string;
+  /**
+   * Casilla del SAE por donde llegan las notificaciones electrónicas. Es el
+   * dato operativo de la nómina: sin él no se puede notificar.
+   */
+  domicilioElectronico: string;
+  telefono: string;
+  email: string;
+  /**
+   * Id de otra parte del mismo expediente a la que representa: el letrado de
+   * la contraria con su representado. Vacío si no representa a nadie.
+   */
+  representaA: string;
+  /**
+   * Si esta persona es el cliente del estudio. Es `cases.client_id` del modelo
+   * visto desde la parte, y hay una sola por expediente: `rol_cliente` dice de
+   * qué lado está el estudio y esto dice quién es exactamente, que no es lo
+   * mismo cuando de ese lado hay tres litisconsortes.
+   */
+  esCliente: boolean;
+  notas: string;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export const ROLES_PARTE: ReadonlyArray<{
+  valor: RolParte;
+  etiqueta: string;
+  detalle: string;
+}> = [
+  { valor: "actor", etiqueta: "Actor", detalle: "Quien demanda." },
+  { valor: "demandado", etiqueta: "Demandado", detalle: "Contra quien se demanda." },
+  {
+    valor: "citado_garantia",
+    etiqueta: "Citado en garantía",
+    detalle: "La aseguradora traída al pleito por el demandado.",
+  },
+  {
+    valor: "tercero",
+    etiqueta: "Tercero",
+    detalle: "Quien interviene sin ser actor ni demandado.",
+  },
+  {
+    valor: "letrado_contraria",
+    etiqueta: "Letrado de la contraria",
+    detalle: "El abogado de enfrente. Se vincula a la parte que representa.",
+  },
+  { valor: "perito", etiqueta: "Perito", detalle: "Auxiliar designado por el juzgado." },
+  { valor: "mediador", etiqueta: "Mediador", detalle: "Quien condujo la mediación." },
+  { valor: "sindico", etiqueta: "Síndico", detalle: "En los procesos concursales." },
+  { valor: "otro", etiqueta: "Otro", detalle: "Martillero, depositario, interventor." },
+];
+
+/*
+ * Historia del expediente: `history_entries` en docs/06-modelo-de-datos.md,
+ * descrita en docs/02-expedientes.md §2.3.
+ *
+ * Es la línea de tiempo única: todo lo que pasó en la causa en una sola lista,
+ * sin importar si lo hizo el juzgado, el estudio, la contraria o un auxiliar.
+ * Es además la fuente principal de comprensión de los agentes, así que cada
+ * entrada guarda el **texto completo** de la pieza y no solo su título.
+ */
+
+/**
+ * Quién produjo la pieza. Es `history_entries.tipo` del modelo, con una
+ * agregada: `escrito_auxiliar`, para lo que presentan el perito, el martillero
+ * o el mediador, que no es ni del juzgado ni de las partes.
+ */
+export type TipoEntrada =
+  | "actuacion_juzgado"
+  | "escrito_propio"
+  | "escrito_contraria"
+  | "escrito_auxiliar"
+  | "documento"
+  | "evento"
+  | "nota";
+
+/**
+ * Qué pieza es. Es `history_entries.subtipo`: el nombre con el que el abogado
+ * la pide ("mandá la cédula", "salió el decreto").
+ */
+export type SubtipoEntrada =
+  | "decreto"
+  | "interlocutoria"
+  | "sentencia"
+  | "cedula"
+  | "mandamiento"
+  | "oficio"
+  | "informe_actuarial"
+  | "acta"
+  | "demanda"
+  | "contestacion"
+  | "escrito"
+  | "recurso"
+  | "pericia"
+  | "documento"
+  | "nota"
+  | "otro";
+
+/**
+ * De dónde salió el **registro**, que no es lo mismo que quién firmó la pieza:
+ * hoy todo lo carga el abogado, el conector del SAE escribirá `sae`
+ * (docs/09-conector-sae.md) y lo que proponga un agente y el abogado apruebe
+ * quedará como `ia_aprobada`, siempre con su marca visible (§2.3).
+ */
+export type OrigenEntrada = "abogado" | "sae" | "ia_aprobada";
+
+/** Una entrada de la historia del expediente. */
+export interface EntradaHistoria {
+  id: string;
+  expedienteId: string;
+  /** Fecha del acto: la del decreto, la del cargo del escrito. */
+  fecha: string;
+  /**
+   * Fecha en que se notificó, si la pieza se notifica. Es de la que corren los
+   * plazos, y por eso se guarda aparte de la fecha del acto.
+   */
+  fechaNotificacion: string;
+  tipo: TipoEntrada;
+  subtipo: SubtipoEntrada;
+  origen: OrigenEntrada;
+  /** Una línea: "Provee la demanda y ordena traslado por diez días". */
+  titulo: string;
+  /**
+   * El texto completo de la pieza, que es lo que se viene a consultar y lo que
+   * van a leer los agentes. En el modelo es `texto`, y `titulo` es su `resumen`.
+   */
+  texto: string;
+  /**
+   * Clave de la etapa que **abre** esta entrada, si abre alguna. Es el enlace
+   * que en el modelo produce la fila de `stage_transitions`: el decreto que da
+   * pie a la etapa nueva queda señalado en la historia y mueve al expediente.
+   * Vacío en las entradas que no cambian de etapa, que son casi todas.
+   */
+  abreEtapa: string;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export const TIPOS_ENTRADA: ReadonlyArray<{
+  valor: TipoEntrada;
+  etiqueta: string;
+  detalle: string;
+}> = [
+  {
+    valor: "actuacion_juzgado",
+    etiqueta: "Actuación del juzgado",
+    detalle: "Decretos, resoluciones, cédulas, oficios, informes del actuario.",
+  },
+  {
+    valor: "escrito_propio",
+    etiqueta: "Presentación del estudio",
+    detalle: "Lo que presentó el estudio.",
+  },
+  {
+    valor: "escrito_contraria",
+    etiqueta: "Presentación de la contraria",
+    detalle: "Lo que presentó la otra parte.",
+  },
+  {
+    valor: "escrito_auxiliar",
+    etiqueta: "Presentación de un auxiliar",
+    detalle: "Pericias, informes del perito, actas del mediador.",
+  },
+  { valor: "documento", etiqueta: "Documento", detalle: "Prueba documental, poder, comprobante." },
+  { valor: "evento", etiqueta: "Evento", detalle: "Audiencia celebrada, reunión, diligencia." },
+  { valor: "nota", etiqueta: "Nota", detalle: "Una observación del abogado, una llamada." },
+];
+
+export const SUBTIPOS_ENTRADA: ReadonlyArray<{ valor: SubtipoEntrada; etiqueta: string }> = [
+  { valor: "decreto", etiqueta: "Decreto" },
+  { valor: "interlocutoria", etiqueta: "Interlocutoria" },
+  { valor: "sentencia", etiqueta: "Sentencia" },
+  { valor: "cedula", etiqueta: "Cédula" },
+  { valor: "mandamiento", etiqueta: "Mandamiento" },
+  { valor: "oficio", etiqueta: "Oficio" },
+  { valor: "informe_actuarial", etiqueta: "Informe del actuario" },
+  { valor: "acta", etiqueta: "Acta" },
+  { valor: "demanda", etiqueta: "Demanda" },
+  { valor: "contestacion", etiqueta: "Contestación" },
+  { valor: "escrito", etiqueta: "Escrito" },
+  { valor: "recurso", etiqueta: "Recurso" },
+  { valor: "pericia", etiqueta: "Pericia" },
+  { valor: "documento", etiqueta: "Documento" },
+  { valor: "nota", etiqueta: "Nota" },
+  { valor: "otro", etiqueta: "Otro" },
+];
+
+export const ORIGENES_ENTRADA: ReadonlyArray<{ valor: OrigenEntrada; etiqueta: string }> = [
+  { valor: "abogado", etiqueta: "Cargado por el estudio" },
+  { valor: "sae", etiqueta: "Importado del SAE" },
+  { valor: "ia_aprobada", etiqueta: "Propuesto por un agente y aprobado" },
+];
+
+/*
+ * Formato de los escritos: cómo quiere el abogado que salgan sus escritos
+ * (docs/02-expedientes.md §2.5).
+ *
+ * Es configuración del estudio y no de cada escrito: el estudio presenta
+ * siempre con la misma letra, los mismos márgenes y la misma forma de encabezar.
+ * En el modelo va en `profiles.preferencias jsonb`.
+ */
+
+/** Medidas de página y tipografía con las que se compone un escrito. */
+export interface FormatoEscrito {
+  /** Familia tipográfica, de las que hay en cualquier computadora. */
+  fuente: string;
+  /** Cuerpo del texto, en puntos. */
+  tamanio: number;
+  /** Interlineado: 1, 1.15, 1.5 o 2. */
+  interlineado: number;
+  /** Márgenes de la hoja, en centímetros. */
+  margenSuperior: number;
+  margenInferior: number;
+  margenIzquierdo: number;
+  margenDerecho: number;
+  /** Sangría de la primera línea de cada párrafo, en centímetros. 0 la saca. */
+  sangria: number;
+  textoJustificado: boolean;
+  /** La carátula en el encabezado: negrita, mayúsculas y su tamaño en puntos. */
+  caratulaNegrita: boolean;
+  caratulaMayusculas: boolean;
+  caratulaTamanio: number;
+}
+
+/**
+ * El formato con el que arranca un estudio que todavía no configuró el suyo:
+ * la hoja oficio de cualquier escrito judicial, a doble espacio y con el margen
+ * izquierdo ancho para el cosido del expediente.
+ *
+ * Son valores de uso corriente, no una exigencia reglamentaria: el abogado los
+ * cambia desde Configuración → Estudio.
+ */
+export const FORMATO_ESCRITO: FormatoEscrito = {
+  fuente: "Times New Roman",
+  tamanio: 12,
+  interlineado: 1.5,
+  margenSuperior: 3,
+  margenInferior: 2.5,
+  margenIzquierdo: 4,
+  margenDerecho: 2,
+  sangria: 1.25,
+  textoJustificado: true,
+  caratulaNegrita: true,
+  caratulaMayusculas: false,
+  caratulaTamanio: 12,
+};
+
+/** Familias que existen en cualquier computadora, para que el escrito se vea igual. */
+export const FUENTES_ESCRITO: ReadonlyArray<string> = [
+  "Times New Roman",
+  "Arial",
+  "Calibri",
+  "Georgia",
+  "Verdana",
+  "Courier New",
+];
+
+export const INTERLINEADOS: ReadonlyArray<{ valor: number; etiqueta: string }> = [
+  { valor: 1, etiqueta: "Sencillo" },
+  { valor: 1.15, etiqueta: "1,15" },
+  { valor: 1.5, etiqueta: "1,5" },
+  { valor: 2, etiqueta: "Doble" },
 ];

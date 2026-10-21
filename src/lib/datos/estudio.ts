@@ -1,7 +1,14 @@
 import { nombrePropio, normalizarEspacios } from "@/lib/formato";
 import { ahora, leerDatos, modificarDatos } from "./almacen";
 import { correcto, type Resultado } from "./resultado";
-import type { CentroJudicial, Estudio } from "./tipos";
+import {
+  FORMATO_ESCRITO,
+  FUENTES_ESCRITO,
+  INTERLINEADOS,
+  type CentroJudicial,
+  type Estudio,
+  type FormatoEscrito,
+} from "./tipos";
 
 /**
  * Datos del estudio y preferencias: la parte "típica" de Configuración
@@ -17,6 +24,39 @@ export interface EntradaEstudio {
   centroJudicialHabitual: CentroJudicial;
   modeloPorDefecto: string;
   correccionDeTildes: boolean;
+  /** Con qué forma salen los escritos (docs/02-expedientes.md §2.5). */
+  formatoEscrito: FormatoEscrito;
+}
+
+/**
+ * Una medida dentro de lo que es una hoja: un margen de quince centímetros o un
+ * cuerpo de 80 puntos no son una preferencia, son un error de tipeo.
+ */
+function medida(valor: number, minimo: number, maximo: number, porDefecto: number): number {
+  if (!Number.isFinite(valor)) return porDefecto;
+  return Math.min(maximo, Math.max(minimo, valor));
+}
+
+/** El formato pedido, con cada medida acotada y la fuente del catálogo. */
+function formatoValido(formato: FormatoEscrito): FormatoEscrito {
+  const interlineado = INTERLINEADOS.some((opcion) => opcion.valor === formato.interlineado)
+    ? formato.interlineado
+    : FORMATO_ESCRITO.interlineado;
+
+  return {
+    fuente: FUENTES_ESCRITO.includes(formato.fuente) ? formato.fuente : FORMATO_ESCRITO.fuente,
+    tamanio: medida(formato.tamanio, 8, 18, FORMATO_ESCRITO.tamanio),
+    interlineado,
+    margenSuperior: medida(formato.margenSuperior, 0, 8, FORMATO_ESCRITO.margenSuperior),
+    margenInferior: medida(formato.margenInferior, 0, 8, FORMATO_ESCRITO.margenInferior),
+    margenIzquierdo: medida(formato.margenIzquierdo, 0, 8, FORMATO_ESCRITO.margenIzquierdo),
+    margenDerecho: medida(formato.margenDerecho, 0, 8, FORMATO_ESCRITO.margenDerecho),
+    sangria: medida(formato.sangria, 0, 4, FORMATO_ESCRITO.sangria),
+    textoJustificado: formato.textoJustificado,
+    caratulaNegrita: formato.caratulaNegrita,
+    caratulaMayusculas: formato.caratulaMayusculas,
+    caratulaTamanio: medida(formato.caratulaTamanio, 8, 18, FORMATO_ESCRITO.caratulaTamanio),
+  };
 }
 
 export async function obtenerEstudio(): Promise<Estudio> {
@@ -37,6 +77,7 @@ export async function actualizarEstudio(entrada: EntradaEstudio): Promise<Result
       centroJudicialHabitual: entrada.centroJudicialHabitual,
       modeloPorDefecto: entrada.modeloPorDefecto,
       correccionDeTildes: entrada.correccionDeTildes,
+      formatoEscrito: formatoValido(entrada.formatoEscrito),
       actualizadoEn: ahora(),
     } satisfies Estudio);
     return correcto(datos.estudio);

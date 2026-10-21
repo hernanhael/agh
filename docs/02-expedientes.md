@@ -85,23 +85,51 @@ Las etapas no son bloqueantes: el abogado puede cambiar la etapa libremente. La 
 
 ### 2.3 Historia del expediente
 
-Es la **línea de tiempo única** del expediente y la fuente principal de comprensión de los agentes. Reúne, en orden cronológico, todo lo que ocurre:
+**Hecho** (la carga manual asistida y el conector del SAE, pendientes). Es la **línea de tiempo única** del expediente y la fuente principal de comprensión de los agentes. Reúne, en orden cronológico, todo lo que ocurre:
 
 | Tipo de entrada | Origen | Ejemplos |
 |---|---|---|
-| Actuación del juzgado | SAE (extensión o robot), carga manual | Proveído, cédula, resolución, sentencia, audiencia fijada |
-| Escrito propio | Abogado (editor de la app o Word importado) | Demanda, contestación, ofrecimiento de prueba; con versiones y estado borrador / presentado |
-| Escrito de la contraria | SAE o carga manual | Contestación, recurso, incidente |
-| Documento | Abogado | Pericia, prueba documental, poder, comprobante |
-| Evento | Agenda | Audiencia, mediación, reunión con cliente |
+| Actuación del juzgado | SAE (extensión o robot), carga manual | Decreto, interlocutoria, sentencia, cédula, mandamiento, oficio, informe del actuario |
+| Presentación del estudio | Abogado (editor de la app o Word importado) | Demanda, contestación, ofrecimiento de prueba; con versiones y estado borrador / presentado |
+| Presentación de la contraria | SAE o carga manual | Contestación, recurso, incidente |
+| Presentación de un auxiliar | Carga manual | Pericia, informe del perito, acta del mediador |
+| Documento | Abogado | Prueba documental, poder, comprobante |
+| Evento | Agenda | Audiencia celebrada, mediación, diligencia |
 | Nota | Abogado | Observaciones, llamadas, acuerdos verbales |
-| Cambio de etapa | Abogado o IA aprobada | "Pasa a Prueba" |
 | Informe de agente | Agente seleccionado | Informe de estado, análisis de una actuación |
 | Conversación fijada | Abogado | Un chat con un agente que vale la pena conservar |
 
-Cada entrada tiene: fecha, tipo, **origen** (juzgado / abogado / IA aprobada / SAE), texto (indexado para búsqueda y RAG), adjuntos, fecha de notificación si aplica, y **efectos** (vencimientos y tareas que generó). Se puede filtrar por tipo y origen, y ver solo "lo que hizo el juzgado" o solo "lo que presenté".
+Cada entrada guarda **qué pieza es** (decreto, cédula, mandamiento, oficio, informe del actuario, acta, demanda, contestación, escrito, recurso, pericia, documento, nota), **quién la hizo** (el juzgado, el estudio, la contraria, un auxiliar), **cuándo** fue el acto y **cuándo se notificó** —que es de la que corren los plazos, y por eso se guarda aparte—, una línea que dice qué dice, y el **texto completo** de la pieza.
 
-Las entradas de origen IA se muestran siempre con una marca visible y con la referencia al agente y a la aprobación del abogado.
+**El texto completo no es un adorno: es el objeto de la pestaña.** Cada actuación se abre y se lee en la misma línea de tiempo, sin salir a otra pantalla, porque el abogado está leyendo la causa desde ahí. Es además lo que van a indexar los agentes: una historia sin textos es una lista de títulos que no sirve para preguntarle nada.
+
+**El decreto que abre una etapa se distingue de todos los demás.** La mayoría de las actuaciones no cambian el estado del juicio; unas pocas sí, y son las que hay que poder encontrar de un vistazo al abrir un expediente que no se mira hace tres meses. La entrada que abre etapa lleva el punto del hilo en el azul del acento, el cuadro teñido y un rótulo que nombra la etapa que abre. **Cargarla mueve al expediente**: pasa a esa etapa con la fecha del acto, en lugar de que el abogado la cambie a mano en Datos. Es el enlace que en el modelo produce la fila de `stage_transitions`.
+
+Por eso tampoco hay una entrada suelta de tipo "cambio de etapa": lo que pasó no fue que el expediente cambió de etapa, sino que **salió un decreto que la abrió**. La etapa es la consecuencia de la actuación y se muestra como tal.
+
+**La historia le escribe al expediente la fecha del último movimiento.** Mientras haya actos de impulso cargados, la fecha del último movimiento útil —de la que se cuenta la caducidad de instancia (§2.11)— sale de la historia y no del campo que se carga a mano. No todo impulsa: un decreto, una presentación del estudio, de la contraria o de un auxiliar sí; una nota, un documento guardado o una audiencia celebrada, no. Si la historia está incompleta hacia atrás, el expediente se va a ver más quieto de lo que está y el semáforo va a avisar de más: es el lado seguro del error, porque una fecha optimista escondería una caducidad en curso, que es justo lo que el semáforo existe para evitar.
+
+**Junto a las entradas se muestran los hechos que cuenta la ficha** —el alta del expediente, la audiencia que ya se celebró, la caducidad declarada—, apagados, marcados como "de la ficha" y sin acciones: pasaron, pero no son piezas del expediente. Van desapareciendo a medida que una entrada los cuenta mejor: si un decreto abrió la etapa actual, sobra la fila "pasa a la etapa X".
+
+Se puede filtrar por lado de la causa —todo, el juzgado, el estudio, la contraria y los auxiliares— con enlaces y no con un control de cliente, así la vista filtrada tiene su propia URL y el botón de atrás funciona.
+
+**En la misma línea que los filtros va el recorrido por las etapas**: un tramo por etapa de la plantilla del tipo de proceso, en gris lo cumplido, en el azul del acento la etapa actual y en la línea del papel lo que falta, con "Contestación · etapa 4 de 12" al lado y el nombre y la fecha de cada tramo al pasar el mouse. Las etapas no son una lista fija del sistema: salen de la plantilla que el abogado configuró para ese tipo de proceso y esa materia (§2.1), así que el recorrido de un ordinario de daños y el de un ejecutivo son distintos porque sus plantillas lo son.
+
+Qué se cumplió se sabe de dos maneras y se usan las dos: por el **orden** de la etapa actual dentro de la plantilla —si está en Prueba, Demanda y Traslado quedaron atrás— y por la **historia**, que además dice con qué actuación y en qué fecha se abrió cada una. La historia es la que tiene la fecha; el orden es el que no deja huecos cuando la historia está incompleta. Una etapa que la historia abrió queda cumplida aunque el proceso haya vuelto atrás: pasó, y volver no lo borra.
+
+El recorrido va acá y no en la cabecera del expediente porque se lee junto con la historia —las etapas las abren las actuaciones de esta misma lista—, mientras que la cabecera dice en qué etapa está, que es otra pregunta.
+
+Las entradas de origen IA se muestran siempre con una marca visible y con la referencia al agente y a la aprobación del abogado. Hoy todo lo carga el estudio; el conector del SAE escribirá `sae`, y lo que un agente proponga y el abogado apruebe, `ia_aprobada`.
+
+Pendiente:
+
+- **Carga manual asistida** (§2.4): pegar el texto o subir el PDF y que la IA proponga qué pieza es, la resuma y calcule los plazos que dispara. Hoy el abogado elige qué es y escribe la línea.
+- **Ingesta desde el SAE** con deduplicación por hash y vinculación automática (`09-conector-sae.md`).
+- **Efectos** de cada actuación: los vencimientos y las tareas que generó, en la entrada y en Agenda.
+- **Adjuntos**: el PDF del decreto, la cédula escaneada, el escrito con su cargo.
+- **Historial de etapas**: la historia señala el decreto que abrió cada etapa, pero el expediente guarda solo la etapa actual y desde cuándo, así que borrar esa entrada no devuelve el expediente a la etapa anterior (`stage_transitions`).
+- Informes de agentes y conversaciones fijadas como entradas.
+- Indexación del texto para la búsqueda y para el RAG.
 
 ### 2.4 Incorporación de actuaciones del juzgado
 
@@ -119,24 +147,40 @@ Reglas comunes:
 
 ### 2.5 Redacción de escritos en el expediente
 
-El abogado redacta sus escritos **dentro del expediente**, con asistencia de IA, y cada versión queda en la historia.
+**Hecho el editor y el encabezado** (el panel de IA, las versiones y la exportación a Word, pendientes). El abogado redacta sus escritos **dentro del expediente**, en la pestaña Historia, y lo que presenta vuelve a esa misma lista como una entrada más.
 
 **Editor propio**
 
-- Editor de texto enriquecido con encabezado de escrito precargado (juzgado, carátula, número, partes, domicilio electrónico del abogado).
-- Panel lateral de IA (el Redactor u otro agente seleccionado) con acciones: generar borrador desde una plantilla de escrito y los datos del expediente, completar campos, reescribir un párrafo, revisar requisitos del escrito según la etapa y la plantilla, calcular el plazo de presentación.
-- Todo lo que la IA toma de la historia lleva referencia; lo que no encuentra se marca `[[COMPLETAR: ...]]` y nunca se inventa.
-- Versiones: cada guardado crea una versión; se pueden comparar y restaurar.
+Arriba se escribe el **cuerpo** y nada más que el cuerpo; abajo se ve la **hoja**, a tamaño real, como va a salir impresa. La hoja va abajo y no al costado porque mide 21 cm de ancho de verdad: en una columna lateral entraría cortada, y achicarla con un zoom para que entre haría que el abogado apruebe un escrito que no es el que va a imprimir.
 
-**Word**
+**El encabezado sale de los metadatos, no se escribe.** El juzgado con su nominación, la carátula, el número de expediente, el nombre y la matrícula del abogado, su domicilio electrónico y por quién comparece ya están cargados en el expediente, en Configuración y en la nómina de partes (§2.14). Copiarlos a mano de un escrito anterior es de donde sale el clásico escrito presentado con la carátula del expediente de al lado. Lo único que el abogado escribe en el encabezado es la **suma** —qué hace el escrito: "Contesta traslado"—, porque eso no es un metadato.
 
-- Importar `.docx` como nueva versión de un escrito (se extrae el texto para la historia y el RAG).
-- Exportar cualquier versión a `.docx` o PDF para presentarla en el Portal del SAE.
+**Lo que falta no se inventa.** Donde no hay dato va una marca `[[COMPLETAR: …]]`, la misma convención con la que los agentes señalan lo que no encontraron en sus fuentes (`03-ia-agentes.md`), y arriba de la hoja se lista qué falta y en qué pantalla se completa. Un escrito al que le falta la matrícula se ve igual, con el agujero a la vista, en lugar de salir con un dato inventado.
+
+Las **fórmulas de estilo** ("Señor Juez de Primera Instancia…", "a V.S. respetuosamente digo:") y la preposición de cada fuero —"en lo Civil y Comercial Común" pero "de Familia y Sucesiones"— están **[a confirmar]** contra la práctica del estudio, y el destino es que sean plantillas de escrito configurables (`writing_templates`).
+
+**Formato de los escritos (Configuración → Estudio)**
+
+Cómo sale el escrito lo decide el abogado, una vez, para todo el estudio: tipo de letra, tamaño, interlineado, los cuatro márgenes en centímetros —el izquierdo ancho para el cosido—, la sangría de párrafo, si el texto va justificado, y si la carátula del encabezado va en negrita, en mayúsculas y con qué tamaño. Es configuración del estudio y no de cada escrito porque un estudio presenta siempre con la misma forma. Las medidas se acotan a lo que es una hoja: un margen de quince centímetros o un cuerpo de ochenta puntos no son una preferencia, son un error de tipeo. En el modelo va en `profiles.preferencias`.
 
 **Presentación**
 
-- Al marcar una versión como "presentado" (con fecha), se crea la entrada correspondiente en la historia y se cierra el vencimiento asociado si lo había.
-- El escrito presentado queda como fuente para los agentes.
+Al guardar, el escrito entra en la historia como **presentado** con la fecha que puso el abogado, con lo que impulsa el proceso y corre la fecha del último movimiento útil (§2.3): una presentación del estudio en la historia significa que se presentó. Se guarda el **cuerpo** y no la hoja completa, porque el encabezado se vuelve a armar con los metadatos cada vez que se abre; guardarlo sería guardar dos veces el mismo dato y quedarse con la copia vieja cuando cambie el juzgado.
+
+Mientras se redacta, el borrador se guarda en el navegador: no es una versión del escrito —eso llega con `documents`—, es una red para no perder media hora de redacción si se cierra la pestaña.
+
+**Imprimir y PDF**
+
+La hoja se imprime sola: al imprimir se oculta el resto de la pantalla y la página sale sin márgenes propios, porque los márgenes ya están en la hoja. "Guardar como PDF" del diálogo de impresión da el archivo que se sube al Portal del SAE. La contrapartida asumida es que cualquier otra pantalla de la aplicación también se imprime sin margen: la única pensada para imprimirse es esta.
+
+Pendiente:
+
+- **Panel de IA** (el Redactor u otro agente seleccionado): generar el borrador desde una plantilla de escrito y los datos del expediente, completar campos, reescribir un párrafo, revisar los requisitos del escrito según la etapa, calcular el plazo de presentación. Todo lo que tome de la historia con su referencia.
+- **Versiones**: cada guardado una versión, comparables y restaurables (`documents` y `document_versions`), y el estado borrador / presentado. Hoy el borrador vive en el navegador y a la historia entra lo presentado.
+- **Word**: importar `.docx` como versión y exportar a `.docx`. Hoy se imprime o se guarda en PDF desde el navegador.
+- **Plantillas de escrito** configurables, que son las que deberían traer las fórmulas de estilo y la estructura de cada tipo de escrito.
+- **Texto enriquecido** en el cuerpo (negritas, subrayado, listas): hoy el cuerpo es texto y el formato lo pone la hoja.
+- Al marcar un escrito como presentado, cerrar el vencimiento asociado si lo había.
 
 ### 2.6 Agentes en el expediente
 
@@ -191,11 +235,15 @@ Pendiente:
 |---|---|---|
 | 1 | Número en versalitas | |
 | 2 | **Carátula** con su estructura visible: las partes en negrita, los conectores "c/" y "s/" en itálica apagada, el objeto en tono más liviano. Las dos partes se muestran igual: el rol del cliente se consulta en la ficha | **Semáforo** con su color: en trámite, para caducidad, caduco |
-| 3 | **Dónde tramita**: juzgado con su nominación, Oficina de Gestión Asociada y centro judicial, y a continuación la **audiencia fijada** con su tipo, fecha y hora si hay una | **Etapa** en que quedó el expediente |
+| 3 | **Dónde tramita**: juzgado con su nominación, Oficina de Gestión Asociada y centro judicial, y a continuación la **audiencia fijada** con su tipo, fecha y hora si hay una, con un calendario en los colores del emoji 📅 | **Etapa** en que quedó el expediente |
 
 Es una rejilla y no dos columnas sueltas porque las filas tienen que quedar enfrentadas: el semáforo a la altura de la carátula y la etapa a la del juzgado, sin depender de que los dos bloques midan lo mismo. La tercera fila arranca separada de la carátula, para que la identidad de la causa se lea como un bloque y el trámite como otro.
 
-**El detalle del movimiento no va en la burbuja**: en el listado alcanza el color, y de dónde sale ese color —"sin movimiento desde el 11/05/2026", "faltan 6 días para la caducidad", "caducidad declarada el 12/06/2026"— aparece al pasar el mouse por el semáforo y explicado en la ficha. Así el único elemento que compite por atención en cada burbuja es el que avisa.
+**El detalle del movimiento no va en la burbuja**: en el listado alcanza el color, y de dónde sale ese color —"sin movimiento desde el 11/05/2026", "faltan 6 días para la caducidad", "caducidad declarada el 12/06/2026"— aparece al pasar el mouse por el semáforo y explicado en la ficha. Así el texto de la burbuja no compite con el color.
+
+**Los dos colores de la burbuja dicen cosas distintas.** El semáforo es el único que lleva color de **estado** —verde, amarillo, rojo— y es el que avisa. La audiencia, en cambio, no es un estado sino una fecha tomada, y se marca con un **calendario dibujado en los colores del emoji 📅**: banda roja arriba, hoja de papel abajo. Es el único dibujo en color de toda la lista, y es a propósito: en una pantalla de burbujas grises, el expediente con audiencia fijada tiene que encontrarse sin leer. No se confunde con el semáforo porque el semáforo es un chip con texto en la columna de la derecha, y porque no hay audiencias "verdes" ni "rojas". El texto de la audiencia queda en gris: el color lo pone el calendario y no la línea entera.
+
+El calendario va dibujado a mano —no es el carácter 📅 puesto en el texto— porque el emoji lo dibuja cada sistema a su manera y hereda la línea de base de la tipografía, que lo deja desalineado del resto de la fila. Y va un punto más grande que el ícono del juzgado, 16 contra 14, para que la banda roja se lea a ese tamaño.
 
 **No se muestran** la materia ni el tipo de proceso: el tipo ya surge de la carátula y la materia es un dato de la ficha, donde sirve para sugerir agentes. Ese lugar lo ocupa lo que el abogado necesita para decidir si tiene que actuar hoy.
 
@@ -301,6 +349,29 @@ Afuera del cuadro queda la cabecera fija de §2.7 —carátula, número, tipo de
 
 El orden de las pestañas vive en un solo lugar (`src/app/expedientes/[id]/pestanas.ts`) y de ahí salen la tira, los atajos y las rutas, con un test que verifica que las tres cosas no se separen.
 
+### 2.14 Las partes del expediente
+
+**Hecho.** La pestaña **Partes** contesta quiénes litigan, cómo se los notifica y quién es exactamente el cliente. Es la nómina de `case_parties` (`06-modelo-de-datos.md`), con nueve roles: actor, demandado, citado en garantía, tercero, letrado de la contraria, perito, mediador, síndico y otro.
+
+**Se lee por lados, no por roles.** Una lista plana de nueve roles no se lee: el abogado piensa el juicio en lados —acá los míos, enfrente los otros, alrededor los auxiliares del juzgado—. La nómina se agrupa en **parte actora**, **parte demandada** (con su citada en garantía, que litiga junto al demandado aunque no haya sido demandada) y **terceros y auxiliares**. El tercero va con los auxiliares y no con un lado porque hasta que no se resuelve cómo interviene no se sabe de qué lado está.
+
+**Los letrados cuelgan de su representado.** Un letrado de la contraria no es una fila suelta de la nómina: es *el abogado de esa parte*, y así se lo encuentra cuando hay que llamarlo. Se lo vincula con "representa a" y se muestra sangrado debajo de su representada. No se admiten cadenas de dos saltos —un letrado de un letrado—, y si el representado se borra, el letrado no desaparece: queda como una fila más, para que no se pierda de vista.
+
+**La carátula es el arranque de la nómina, no una copia de ella.** El actor y el demandado ya están escritos en la carátula, así que la pestaña no los vuelve a pedir: mientras un lado no tenga su parte cargada, ofrece **sumarlo con un clic** y el abogado completa después el documento y los domicilios, que es cuando llegan. La comparación es por nombre normalizado —sin tildes ni mayúsculas, igual que el buscador del listado—, así que "Swiss Medical ART" cargada a mano no vuelve a ofrecerse.
+
+**El dato que se viene a buscar es el domicilio electrónico.** Sin la casilla del SAE no se notifica, así que es el único dato que, cuando falta, se muestra en lugar de omitirse. Y solo en quienes se notifica: al perito lo notifica el juzgado por su canal y la mediadora ya terminó su intervención, así que reclamarles la casilla sería un aviso que el abogado no puede ni necesita resolver.
+
+**Quién es el cliente.** El rol del cliente de la ficha (§2.1) dice de qué **lado** está el estudio; la nómina dice **quién** es, que no es lo mismo cuando de ese lado hay tres litisconsortes. Hay un solo cliente por expediente —es `cases.client_id` visto desde la parte—, así que marcar a uno se lo quita a cualquier otro. Cuando el lado que se suma desde la carátula es el del cliente, la parte nace ya marcada.
+
+**Lo que se guarda adentro y debería estar afuera.** En el modelo, la parte es el cruce entre el expediente y un **contacto**: el rol y a quién representa van en `case_parties`, y el documento, los domicilios y el teléfono en `contacts`, que se comparte entre expedientes. Mientras esa agenda de contactos no exista, la parte guarda esos datos adentro —igual que el expediente guarda hoy el juzgado en sus propias columnas hasta que exista `courts`—, con la misma consecuencia: un cliente con tres juicios se carga tres veces. La migración es un `contacts` por cada nombre distinto y una referencia en su lugar.
+
+Pendiente:
+
+- **Agenda de contactos del estudio** (`contacts`), que es lo que termina con la carga repetida, y el vínculo del cliente con sus otros expedientes.
+- **Encabezado de escrito** armado con esta nómina: carátula, partes, documentos y domicilios constituidos, sin volver a tipearlos (§2.5).
+- Cédulas y notificaciones a los domicilios electrónicos cargados.
+- Aseguradoras con su póliza y su cobertura; peritos con su especialidad y su matrícula.
+
 ## 3. Funcionalidad
 
 ### MVP
@@ -308,12 +379,16 @@ El orden de las pestañas vive en un solo lugar (`src/app/expedientes/[id]/pesta
 - [x] Alta, edición y baja de expedientes, eligiendo el tipo de proceso en el alta.
 - [x] Carátula normalizada, con sus componentes guardados por separado (`10-normalizacion-de-texto.md`).
 - [ ] Baja lógica y archivo de expedientes (hoy la baja es definitiva).
-- [ ] Ficha completa: partes, montos, fechas clave, etiquetas.
+- [x] Nómina de partes con sus roles, documentos y domicilios, agrupada por lado, con los letrados colgando de su representado y el arranque desde la carátula (§2.14).
+- [ ] Ficha completa: montos, fechas clave, etiquetas.
 - [x] Tipos de proceso configurables (crear, editar, desactivar, borrar) con ejemplos iniciales para ordinario, sumarísimo, sumario, ejecutivo, monitorio, expropiación, sucesorio y desalojo.
 - [ ] Etapas con historial de transiciones y advertencia en transiciones no previstas (hoy se guarda la etapa actual y desde cuándo).
-- [ ] Historia unificada con todos los tipos de entrada, filtros por tipo y origen, indexación para RAG.
+- [x] Historia del expediente: actuaciones del juzgado, presentaciones del estudio, de la contraria y de los auxiliares, documentos y notas, cada una con su texto completo consultable; el decreto que abre etapa distinguido y moviendo al expediente; filtros por lado de la causa (§2.3).
+- [ ] Indexación del texto de la historia para la búsqueda y para el RAG de los agentes.
 - [ ] Carga manual asistida de actuaciones (texto o PDF) e ingestión desde la extensión del SAE con deduplicación y vinculación automática.
-- [ ] Editor de escritos con panel de IA, versiones, importación y exportación Word/PDF, marcado de "presentado".
+- [x] Editor de escritos con el encabezado armado desde los metadatos, el formato del estudio configurable, impresión y PDF desde el navegador (§2.5).
+- [ ] Editor de escritos: panel de IA, versiones, texto enriquecido e importación y exportación Word.
+- [x] Recorrido por las etapas del tipo de proceso en la historia: qué se cumplió y qué falta (§2.3).
 - [ ] Documentos con subida, extracción de texto y clasificación propuesta.
 - [ ] Panel de agentes seleccionados por expediente e informe de estado bajo demanda (hoy la ficha sugiere agentes por materia y tipo de proceso).
 - [ ] Vencimientos y tareas generados desde la historia, visibles en Agenda.

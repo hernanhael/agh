@@ -1,4 +1,4 @@
-import { CalendarClock, Landmark } from "lucide-react";
+import { Landmark } from "lucide-react";
 import {
   claseColumnaEstado,
   claseDatoRegistro,
@@ -72,6 +72,55 @@ function Caratula({ expediente }: { expediente: Expediente }) {
   );
 }
 
+/**
+ * Calendario con los colores del emoji 📅: la banda roja arriba y la página de
+ * papel abajo, en lugar del ícono de línea que usa el resto de la aplicación.
+ *
+ * Es el único dibujo en color de la lista y es a propósito: en una pantalla de
+ * burbujas grises, el expediente con audiencia fijada tiene que encontrarse sin
+ * leer. El rojo acá no es el rojo del semáforo —no hay audiencias "verdes" ni
+ * "rojas"—, y no se confunde con él porque el semáforo es un chip con texto en
+ * la columna de la derecha y esto es un calendario de 16 píxeles en la línea
+ * del juzgado.
+ *
+ * Va dibujado a mano y no como emoji de texto porque el emoji lo dibuja cada
+ * sistema a su manera (en Windows sale plano y azulado) y hereda la línea de
+ * base del texto, que lo deja desalineado del resto de la fila.
+ */
+function CalendarioAudiencia({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" fill="none" className={className}>
+      {/* Las dos anillas, antes de la página para que queden por detrás. */}
+      <path
+        d="M5.5 1.25v2M10.5 1.25v2"
+        className="stroke-zinc-400 dark:stroke-zinc-500"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <rect
+        x="1.75"
+        y="2.75"
+        width="12.5"
+        height="11.5"
+        rx="2"
+        className="fill-white stroke-zinc-300 dark:fill-zinc-200 dark:stroke-zinc-400"
+      />
+      {/* La banda del encabezado: el rojo con el que todos dibujan el emoji. */}
+      <path
+        d="M1.75 4.75a2 2 0 0 1 2-2h8.5a2 2 0 0 1 2 2v1.6h-12.5z"
+        className="fill-[oklch(0.58_0.19_25)] dark:fill-[oklch(0.64_0.18_25)]"
+      />
+      {/* Las marcas de los días: textura de hoja de almanaque. */}
+      <path
+        d="M4.75 9.25h2.5M8.75 9.25h2.5M4.75 11.75h2.5"
+        className="stroke-zinc-300 dark:stroke-zinc-400"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function FilaExpediente({
   expediente,
   tipo,
@@ -128,8 +177,17 @@ export function FilaExpediente({
           {proxima ? (
             <>
               <Punto />
+              {/*
+                La audiencia es el único dato de la línea que lleva color, y lo
+                lleva con los colores del emoji del calendario: entre burbujas
+                grises, el expediente con audiencia fijada salta a la vista. Va
+                un punto más grande que el ícono del juzgado —16 contra 14— para
+                que la banda roja se lea. El texto queda en gris: el color lo
+                pone el calendario y no la línea entera, y el semáforo de la
+                derecha sigue siendo el único verde/amarillo/rojo de la fila.
+              */}
               <span className="inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300">
-                <CalendarClock aria-hidden className="size-3.5 shrink-0" />
+                <CalendarioAudiencia className="size-4 shrink-0" />
                 {proxima.texto}
               </span>
             </>

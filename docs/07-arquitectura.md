@@ -85,15 +85,17 @@ app/
     nuevo/           alta con previsualización de carátula
     [id]/            ficha por pestañas: una ruta por pestaña (02-expedientes.md §2.13)
       datos/           metadatos del expediente y formulario de edición
-      partes/          actor, demandado y de qué lado está el cliente
+      partes/          nómina de partes: roles, documentos y domicilios (§2.14)
       agenda/          audiencia fijada y plazo de caducidad corriendo
-      historia/        línea de tiempo del expediente (§2.3)
+      historia/        línea de tiempo del expediente, recorrido por las etapas
+                       y editor de escritos (§2.3 y §2.5)
       resumen/         estado de la causa con el cómputo de caducidad (§2.7)
       contabilidad/    costo del juicio: partidas, totales y desglose (§2.12)
       ia/              agentes que intervienen en el expediente (§2.6)
       pestanas.ts      el orden de las pestañas, sus íconos y sus teclas de función (con test)
       cargar.ts        lecturas compartidas por el cuadro y sus pestañas
-    acciones.ts      acciones de servidor del área, expediente y contabilidad
+    acciones.ts      acciones de servidor del área: expediente, contabilidad,
+                     partes, historia y escritos
   ia/                conversaciones e informes (los agentes se configuran en configuracion/)
   guias/             navegación y lectura
   configuracion/     área transversal de catálogos del abogado
@@ -112,15 +114,19 @@ components/
 lib/
   plazos/            motor de plazos (puro, con tests)
   procesal/          reglas procesales sobre el expediente: caducidad de instancia,
-                     audiencia fijada (puro, con tests; ver 02-expedientes.md §2.11)
+                     audiencia fijada, nómina de partes, historia y recorrido por
+                     las etapas (puro, con tests; ver 02-expedientes.md §2.11)
   contabilidad/      importes en centavos y totales del expediente (puro, con tests;
                      ver 02-expedientes.md §2.12)
   formato/           normalización de texto (puro, con tests; ver 10-normalizacion-de-texto.md)
+  escritos/          encabezado armado desde los metadatos y formato de la hoja
+                     (puro, con tests; ver 02-expedientes.md §2.5)
   datos/             repositorios de configuración y expedientes; normalizan al guardar
   rag/               fragmentación, embeddings, búsqueda híbrida filtrada por agente y expediente
   agentes/           herramientas, armado de contexto, salidas estructuradas, verificación de citas, cobertura
   sae/               normalización de payloads, hash, vinculación de expedientes, selectores versionados
-  editor/            modelo de documento, conversión docx, plantillas de escritos con variables
+  editor/            versiones del escrito, conversión docx y plantillas con variables
+                     (lo que falta del editor; hoy está `escritos/`)
   db/                cliente Supabase, tipos generados
 extension/           extensión de navegador (carpeta o repositorio aparte)
   manifest.json
@@ -149,14 +155,16 @@ Hasta que esté montado Supabase, los repositorios de `lib/datos/` guardan en un
 
 `lib/datos` tiene dos mitades y conviene no mezclarlas:
 
-- **Repositorios** (`almacen`, `expedientes`, `procesos`, `agentes`, `estudio`): llegan al almacén y por lo tanto a `node:fs`. `almacen.ts` está marcado con `import "server-only"`, así que importarlos desde un componente de cliente falla con un mensaje claro en lugar de un error del empaquetador.
+- **Repositorios** (`almacen`, `expedientes`, `procesos`, `agentes`, `estudio`, `gastos`, `partes`, `historia`): llegan al almacén y por lo tanto a `node:fs`. `almacen.ts` está marcado con `import "server-only"`, así que importarlos desde un componente de cliente falla con un mensaje claro en lugar de un error del empaquetador.
 - **Módulos puros** (`tipos`, `filtros`): tipos, constantes, búsqueda y filtrado. Corren en los dos lados, y eso es lo que permite que el listado filtre en el cliente con exactamente las mismas reglas que usaría el servidor.
 
-El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos`, `lib/datos/filtros` y `lib/procesal`.
+El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos`, `lib/datos/filtros`, `lib/procesal` y `lib/escritos`.
+
+Hay dos componentes de cliente en toda la aplicación y los dos lo son por una razón concreta: el listado de expedientes, que filtra mientras se tipea, y el editor de escritos, donde la hoja se tiene que ver cambiar mientras se escribe. Todo lo demás son formularios HTML con una acción de servidor.
 
 ### 3.3 Reglas procesales
 
-`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11) y la **audiencia fijada** (`audiencia.ts`).
+`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11), la **audiencia fijada** (`audiencia.ts`), la **nómina de partes** (`partes.ts`: lados de la causa, representantes, conciliación con la carátula, §2.14), la **historia** (`historia.ts`: qué cuenta como acto de impulso, mezcla con los hechos de la ficha, filtros, §2.3) y el **recorrido por las etapas** (`recorrido.ts`: qué se cumplió y qué falta).
 
 Es puro como `lib/plazos` y por los mismos motivos: corre en el servidor y en el cliente con el mismo resultado —el listado muestra el semáforo de caducidad mientras el abogado filtra— y se testea con fechas fijas. Dos reglas que se siguen de eso:
 
@@ -200,6 +208,15 @@ Dentro de un área, `components/SubNav.tsx` resuelve la navegación horizontal e
 Los cuatro tonos significan lo mismo en todas las pantallas: **verde** lo que está en curso y en regla, **amarillo** lo que pide atención, **rojo** lo consumado y malo, **gris** lo que no está corriendo. Un solo elemento con color por fila: el resto del cuadro va en grises, incluida la explicación del propio color.
 
 Cada área traduce su dominio a esos tonos en un solo lugar —`components/SituacionProcesal.tsx` para la caducidad de instancia, `estadoDelTipo` y `estadoDelModo` en las páginas de Configuración—, así que el lenguaje visual no se decide en el JSX.
+
+### 3.7 Composición de escritos
+
+`lib/escritos/` arma el **encabezado** del escrito con los metadatos que ya están cargados —juzgado, carátula, número, matrícula, domicilio electrónico, por quién comparece— y traduce el **formato del estudio** en medidas de la hoja (`02-expedientes.md` §2.5). Dos decisiones que explican el módulo:
+
+- **Lo que falta no se inventa**: donde no hay dato va `[[COMPLETAR: …]]` y la función devuelve además la lista de lo que falta, con el nombre de la pantalla donde se completa. Es la misma convención de los agentes, y vale igual para un metadato que para una cita.
+- **Las medidas van como estilos en línea**, no como clases: son centímetros y puntos que el abogado elige, y Tailwind no puede generar clases para valores que recién se conocen en tiempo de ejecución. Es el único lugar de la aplicación donde el estilo en línea es lo correcto.
+
+Es puro, así que el editor —que corre en el cliente para previsualizar— y el servidor componen el mismo escrito.
 
 ## 4. Motor de plazos
 

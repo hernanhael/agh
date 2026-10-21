@@ -39,12 +39,27 @@ export {
   type EntradaExpediente,
 } from "./expedientes";
 export {
+  actualizarEntradaHistoria,
+  crearEntradaHistoria,
+  eliminarEntradaHistoria,
+  listarHistoria,
+  type CargaDeEntrada,
+} from "./historia";
+export {
   crearGasto,
   eliminarGasto,
   listarGastos,
   listarTodosLosGastos,
   type EntradaGasto,
 } from "./gastos";
+export {
+  actualizarParte,
+  crearParte,
+  eliminarParte,
+  listarPartes,
+  sumarParteDeCaratula,
+  type EntradaParte,
+} from "./partes";
 export {
   aplicarFiltros,
   coincide,

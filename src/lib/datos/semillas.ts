@@ -1,5 +1,13 @@
 import { clavear } from "@/lib/formato";
-import type { Agente, Datos, EtapaProceso, Gasto, TipoProceso } from "./tipos";
+import type {
+  Agente,
+  Datos,
+  EntradaHistoria,
+  EtapaProceso,
+  Gasto,
+  Parte,
+  TipoProceso,
+} from "./tipos";
 
 /**
  * Ejemplos que trae el sistema, editables y borrables por el abogado
@@ -529,6 +537,8 @@ export function datosIniciales(): Datos {
     agentes: AGENTES_EJEMPLO,
     expedientes: EXPEDIENTES_EJEMPLO,
     gastos: GASTOS_EJEMPLO,
+    partes: PARTES_EJEMPLO,
+    historia: HISTORIA_EJEMPLO,
   });
 }
 
@@ -630,6 +640,243 @@ export const GASTOS_EJEMPLO: Gasto[] = [
     moneda: "ARS",
     fecha: "2026-08-20",
     estado: "previsto",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+];
+
+/**
+ * Nómina de partes de ejemplo, toda sobre el expediente Rogel: un ordinario de
+ * daños contra una ART (docs/02-expedientes.md §2.14).
+ *
+ * Está armada para que se vea la pestaña entera con un caso típico: los dos
+ * lados de la carátula, la aseguradora citada en garantía, el letrado de la
+ * contraria colgando de su representada, y el perito y la mediadora como
+ * auxiliares. El demandado queda **sin domicilio electrónico** a propósito, que
+ * es el aviso que la pestaña muestra cuando falta la casilla del SAE.
+ *
+ * Los documentos, domicilios y teléfonos son **inventados**: son un ejemplo
+ * editable como cualquier otra semilla.
+ */
+export const PARTES_EJEMPLO: Parte[] = [
+  {
+    id: "pa-rogel-actor",
+    expedienteId: "ex-rogel",
+    rol: "actor",
+    nombre: "Nicolás Rogel",
+    documento: "25.123.456",
+    domicilioReal: "San Martín 450, San Miguel de Tucumán",
+    domicilioElectronico: "20-25123456-7",
+    telefono: "381 555 0101",
+    email: "",
+    representaA: "",
+    esCliente: true,
+    notas: "Accidente de trabajo del 12/03/2026. Alta médica con incapacidad parcial.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-demandada",
+    expedienteId: "ex-rogel",
+    rol: "demandado",
+    nombre: "Swiss Medical ART",
+    documento: "30-68340002-5",
+    domicilioReal: "Avenida Mitre 320, San Miguel de Tucumán",
+    // Sin casilla del SAE: es el dato que la pestaña reclama cuando falta.
+    domicilioElectronico: "",
+    telefono: "",
+    email: "",
+    representaA: "",
+    esCliente: false,
+    notas: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-letrado",
+    expedienteId: "ex-rogel",
+    rol: "letrado_contraria",
+    nombre: "Fernando Ledesma",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "20-22987654-3",
+    telefono: "381 555 0202",
+    email: "",
+    representaA: "pa-rogel-demandada",
+    esCliente: false,
+    notas: "Apoderado de la ART. Contestó la demanda el 12/09/2026.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-perito",
+    expedienteId: "ex-rogel",
+    rol: "perito",
+    nombre: "Silvia Juárez",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "27-20456789-1",
+    telefono: "",
+    email: "",
+    representaA: "",
+    esCliente: false,
+    notas: "Perito médica designada de oficio. Pericia pendiente de realización.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-mediadora",
+    expedienteId: "ex-rogel",
+    rol: "mediador",
+    nombre: "Ana Carrizo",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "",
+    telefono: "381 555 0303",
+    email: "",
+    representaA: "",
+    esCliente: false,
+    notas: "Condujo la mediación prejudicial, cerrada sin acuerdo el 20/08/2026.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+];
+
+/**
+ * Historia de ejemplo, toda sobre el expediente Rogel: un ordinario de daños
+ * contra una ART que ya pasó la mediación, la demanda, el traslado y la
+ * contestación (docs/02-expedientes.md §2.3).
+ *
+ * Está armada para que se vea la pestaña entera con un trámite típico: los dos
+ * **decretos que abren etapa** —que son los que la historia distingue—, la
+ * cédula con la que se notificó el traslado, un oficio, el informe del
+ * actuario, lo que presentó el estudio, lo que presentó la contraria y el acta
+ * del mediador.
+ *
+ * Las dos fechas que el expediente guarda en su ficha salen de acá: la etapa
+ * `contestacion` desde el 15/09 la abrió el último decreto, y el último
+ * movimiento útil es la fecha de ese mismo decreto, que es el acto de impulso
+ * más reciente. Los textos son **inventados** y están recortados: alcanzan para
+ * ver cómo se consulta una actuación, no son modelos de redacción judicial.
+ */
+export const HISTORIA_EJEMPLO: EntradaHistoria[] = [
+  {
+    id: "hi-rogel-mediacion",
+    expedienteId: "ex-rogel",
+    fecha: "2026-08-20",
+    fechaNotificacion: "",
+    tipo: "escrito_auxiliar",
+    subtipo: "acta",
+    origen: "abogado",
+    titulo: "Acta de cierre de la mediación prejudicial, sin acuerdo",
+    texto:
+      "En la ciudad de San Miguel de Tucumán, a los veinte días del mes de agosto de 2026, en el centro de mediación, comparecen el requirente y la requerida por medio de apoderado. Abierto el acto, la requerida manifiesta que no formulará propuesta. Se da por cerrada la mediación sin acuerdo, quedando expedita la vía judicial.",
+    abreEtapa: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-demanda",
+    expedienteId: "ex-rogel",
+    fecha: "2026-08-25",
+    fechaNotificacion: "",
+    tipo: "escrito_propio",
+    subtipo: "demanda",
+    origen: "abogado",
+    titulo: "Demanda de daños y perjuicios contra la ART",
+    texto:
+      "Interpone demanda de daños y perjuicios por el accidente de trabajo del 12 de marzo de 2026. Reclama incapacidad parcial permanente, daño moral y gastos de tratamiento. Ofrece prueba documental, informativa y pericial médica. Acompaña acta de cierre de la mediación.",
+    abreEtapa: "demanda",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-traslado",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-02",
+    fechaNotificacion: "2026-09-04",
+    tipo: "actuacion_juzgado",
+    subtipo: "decreto",
+    origen: "abogado",
+    titulo: "Provee la demanda y ordena traslado por diez días",
+    texto:
+      "San Miguel de Tucumán, 2 de septiembre de 2026. Por presentado, por parte en el carácter invocado y con el domicilio legal constituido. Téngase por interpuesta la demanda. Córrase traslado de la misma a la demandada por el término de diez días, bajo apercibimiento de ley. Notifíquese.",
+    abreEtapa: "traslado",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-cedula",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-04",
+    fechaNotificacion: "2026-09-04",
+    tipo: "actuacion_juzgado",
+    subtipo: "cedula",
+    origen: "abogado",
+    titulo: "Cédula de notificación del traslado, diligenciada en el domicilio de la demandada",
+    texto:
+      "Se notifica a la demandada del decreto de fecha 2 de septiembre de 2026, que ordena el traslado de la demanda por diez días. Se deja copia de la demanda y de la documental acompañada.",
+    abreEtapa: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-oficio",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-08",
+    fechaNotificacion: "",
+    tipo: "actuacion_juzgado",
+    subtipo: "oficio",
+    origen: "abogado",
+    titulo: "Oficio al hospital para que remita la historia clínica del actor",
+    texto:
+      "Se libra oficio al establecimiento asistencial a fin de que remita copia íntegra y certificada de la historia clínica del actor, correspondiente a la atención del 12 de marzo de 2026.",
+    abreEtapa: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-contestacion",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-12",
+    fechaNotificacion: "",
+    tipo: "escrito_contraria",
+    subtipo: "contestacion",
+    origen: "abogado",
+    titulo: "La ART contesta la demanda, niega el nexo causal y ofrece prueba",
+    texto:
+      "Contesta demanda. Niega todos y cada uno de los hechos que no sean objeto de expreso reconocimiento. Reconoce la cobertura vigente y la denuncia del siniestro. Niega el grado de incapacidad invocado y el nexo causal con las tareas. Ofrece prueba pericial médica y documental.",
+    abreEtapa: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-actuario",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-14",
+    fechaNotificacion: "",
+    tipo: "actuacion_juzgado",
+    subtipo: "informe_actuarial",
+    origen: "abogado",
+    titulo: "El actuario informa que la contestación se presentó en término",
+    texto:
+      "Informo que, notificado el traslado el 4 de septiembre de 2026, el plazo de diez días hábiles venció el 18 de septiembre de 2026, y que la contestación de demanda fue presentada el 12 de septiembre de 2026, es decir, en término. Conste.",
+    abreEtapa: "",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "hi-rogel-preliminar",
+    expedienteId: "ex-rogel",
+    fecha: "2026-09-15",
+    fechaNotificacion: "2026-09-17",
+    tipo: "actuacion_juzgado",
+    subtipo: "decreto",
+    origen: "abogado",
+    titulo: "Tiene por contestada la demanda y fija la audiencia preliminar",
+    texto:
+      "San Miguel de Tucumán, 15 de septiembre de 2026. Téngase por contestada la demanda en tiempo y forma. Téngase presente la prueba ofrecida para su oportunidad. Fíjase audiencia preliminar para el día 16 de octubre de 2026 a las 09:30 horas, debiendo comparecer las partes personalmente, bajo apercibimiento de ley. Notifíquese.",
+    abreEtapa: "contestacion",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },

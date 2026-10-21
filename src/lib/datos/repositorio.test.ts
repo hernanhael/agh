@@ -10,12 +10,26 @@ import {
   obtenerAgente,
 } from "./agentes";
 import { hoy } from "./almacen";
+import { FORMATO_ESCRITO } from "./tipos";
 import { actualizarEstudio, obtenerEstudio } from "./estudio";
 import {
   crearExpediente,
   listarExpedientes,
   obtenerExpediente,
 } from "./expedientes";
+import {
+  actualizarEntradaHistoria,
+  crearEntradaHistoria,
+  eliminarEntradaHistoria,
+  listarHistoria,
+} from "./historia";
+import {
+  actualizarParte,
+  crearParte,
+  eliminarParte,
+  listarPartes,
+  sumarParteDeCaratula,
+} from "./partes";
 import {
   actualizarTipoProceso,
   crearTipoProceso,
@@ -307,16 +321,27 @@ describe("agentes", () => {
 });
 
 describe("estudio", () => {
+  const ESTUDIO_BASE = {
+    nombre: "",
+    matricula: "",
+    cuit: "",
+    domicilioElectronico: "",
+    telefono: "",
+    centroJudicialHabitual: "capital" as const,
+    modeloPorDefecto: "anthropic/claude-opus-5",
+    correccionDeTildes: true,
+    formatoEscrito: FORMATO_ESCRITO,
+  };
+
   it("guarda el nombre como nombre propio y el domicilio en minúsculas", async () => {
     const resultado = await actualizarEstudio({
+      ...ESTUDIO_BASE,
       nombre: "HERNAN ROGEL",
       matricula: " CAT 1234 ",
       cuit: "20-12345678-9",
       domicilioElectronico: "Estudio@Ejemplo.COM",
       telefono: "381 555 1234",
       centroJudicialHabitual: "concepcion",
-      modeloPorDefecto: "anthropic/claude-opus-5",
-      correccionDeTildes: true,
     });
     if (!resultado.ok) throw new Error(resultado.error);
 
@@ -327,13 +352,9 @@ describe("estudio", () => {
 
   it("al desactivar la corrección de tildes, deja los nombres como se escribieron", async () => {
     await actualizarEstudio({
+      ...ESTUDIO_BASE,
       nombre: "Hernán Rogel",
       matricula: "CAT 1234",
-      cuit: "",
-      domicilioElectronico: "",
-      telefono: "",
-      centroJudicialHabitual: "capital",
-      modeloPorDefecto: "anthropic/claude-opus-5",
       correccionDeTildes: false,
     });
 
@@ -345,5 +366,370 @@ describe("estudio", () => {
     // Sigue corrigiendo mayúsculas y espacios, pero no agrega tildes.
     expect(resultado.valor.caratula).toBe("Nicolas Rogel c/ Swiss Medical ART s/ Danos y Perjuicios");
     expect((await obtenerEstudio()).correccionDeTildes).toBe(false);
+  });
+});
+
+describe("formato de los escritos", () => {
+  it("acota las medidas que no son de una hoja y respeta las que sí", async () => {
+    const resultado = await actualizarEstudio({
+      nombre: "Hernán Rogel",
+      matricula: "CAT 1234",
+      cuit: "",
+      domicilioElectronico: "",
+      telefono: "",
+      centroJudicialHabitual: "capital",
+      modeloPorDefecto: "anthropic/claude-opus-5",
+      correccionDeTildes: true,
+      formatoEscrito: {
+        ...FORMATO_ESCRITO,
+        fuente: "Comic Sans",
+        tamanio: 80,
+        interlineado: 7,
+        margenIzquierdo: 3.5,
+        margenDerecho: -2,
+        sangria: 1,
+        caratulaNegrita: false,
+      },
+    });
+    if (!resultado.ok) throw new Error(resultado.error);
+    const formato = resultado.valor.formatoEscrito;
+
+    // Fuera del catálogo o fuera de rango: vuelve al valor de fábrica o al tope.
+    expect(formato?.fuente).toBe(FORMATO_ESCRITO.fuente);
+    expect(formato?.tamanio).toBe(18);
+    expect(formato?.interlineado).toBe(FORMATO_ESCRITO.interlineado);
+    expect(formato?.margenDerecho).toBe(0);
+    // Lo que sí es una medida de hoja se guarda tal cual.
+    expect(formato?.margenIzquierdo).toBe(3.5);
+    expect(formato?.sangria).toBe(1);
+    expect(formato?.caratulaNegrita).toBe(false);
+  });
+});
+
+describe("partes del expediente", () => {
+  const PARTE_BASE = {
+    expedienteId: "",
+    rol: "demandado" as const,
+    nombre: "ELECTRONICA DEL NORTE SRL",
+    documento: " 30-12345678-9 ",
+    domicilioReal: "san martin 450, san miguel de tucuman",
+    domicilioElectronico: " 20-25123456-7 ",
+    telefono: "381 555 0101",
+    email: " Contacto@Estudio.COM ",
+    representaA: "",
+    esCliente: false,
+    notas: "CONTESTO LA DEMANDA EL LUNES",
+  };
+
+  /** Un expediente propio al que colgarle las partes de cada test. */
+  async function expedientePropio(): Promise<string> {
+    const resultado = await crearExpediente(EXPEDIENTE_BASE);
+    if (!resultado.ok) throw new Error(resultado.error);
+    return resultado.valor.id;
+  }
+
+  it("guarda la parte normalizada: nombre propio, domicilio como título y casilla en minúscula", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await crearParte({ ...PARTE_BASE, expedienteId });
+    if (!resultado.ok) throw new Error(resultado.error);
+
+    // "Electronica" no está en el diccionario de acentos, así que la tilde no
+    // se inventa: la normalización arregla lo que sabe y no adivina el resto
+    // (docs/10-normalizacion-de-texto.md). La sigla SRL se respeta.
+    expect(resultado.valor.nombre).toBe("Electronica del Norte SRL");
+    expect(resultado.valor.documento).toBe("30-12345678-9");
+    expect(resultado.valor.domicilioReal).toBe("San Martín 450, San Miguel de Tucumán");
+    expect(resultado.valor.domicilioElectronico).toBe("20-25123456-7");
+    expect(resultado.valor.email).toBe("contacto@estudio.com");
+    expect(resultado.valor.notas).toBe("Contesto la demanda el lunes");
+  });
+
+  it("no guarda una parte sin nombre", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await crearParte({ ...PARTE_BASE, expedienteId, nombre: "   " });
+    expect(resultado.ok).toBe(false);
+  });
+
+  it("deja un solo cliente por expediente", async () => {
+    const expedienteId = await expedientePropio();
+    const primera = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Ramón Gómez",
+      rol: "actor",
+      esCliente: true,
+    });
+    const segunda = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Mirta Gómez",
+      rol: "actor",
+      esCliente: true,
+    });
+    if (!primera.ok || !segunda.ok) throw new Error("no se crearon las partes");
+
+    const partes = await listarPartes(expedienteId);
+    expect(partes.filter((parte) => parte.esCliente).map((parte) => parte.id)).toEqual([
+      segunda.valor.id,
+    ]);
+  });
+
+  it("acepta que un letrado represente a una parte y rechaza la cadena de dos saltos", async () => {
+    const expedienteId = await expedientePropio();
+    const demandada = await crearParte({ ...PARTE_BASE, expedienteId });
+    if (!demandada.ok) throw new Error(demandada.error);
+
+    const letrado = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Fernando Ledesma",
+      rol: "letrado_contraria",
+      representaA: demandada.valor.id,
+    });
+    if (!letrado.ok) throw new Error(letrado.error);
+    expect(letrado.valor.representaA).toBe(demandada.valor.id);
+
+    // Representar a quien ya representa a otro no se guarda: la nómina no sabe
+    // dibujar un letrado de un letrado.
+    const segundo = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Laura Paz",
+      rol: "letrado_contraria",
+      representaA: letrado.valor.id,
+    });
+    if (!segundo.ok) throw new Error(segundo.error);
+    expect(segundo.valor.representaA).toBe("");
+  });
+
+  it("al borrar una parte, sus letrados quedan sin representado en lugar de apuntar al vacío", async () => {
+    const expedienteId = await expedientePropio();
+    const demandada = await crearParte({ ...PARTE_BASE, expedienteId });
+    if (!demandada.ok) throw new Error(demandada.error);
+    const letrado = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Fernando Ledesma",
+      rol: "letrado_contraria",
+      representaA: demandada.valor.id,
+    });
+    if (!letrado.ok) throw new Error(letrado.error);
+
+    const borrada = await eliminarParte(demandada.valor.id);
+    expect(borrada.ok).toBe(true);
+
+    const partes = await listarPartes(expedienteId);
+    expect(partes).toHaveLength(1);
+    expect(partes[0].representaA).toBe("");
+  });
+
+  it("edita la parte conservando su identidad", async () => {
+    const expedienteId = await expedientePropio();
+    const creada = await crearParte({ ...PARTE_BASE, expedienteId, domicilioElectronico: "" });
+    if (!creada.ok) throw new Error(creada.error);
+
+    const guardada = await actualizarParte(creada.valor.id, {
+      ...PARTE_BASE,
+      expedienteId,
+      domicilioElectronico: "20-30111222-3",
+    });
+    if (!guardada.ok) throw new Error(guardada.error);
+    expect(guardada.valor.id).toBe(creada.valor.id);
+    expect(guardada.valor.domicilioElectronico).toBe("20-30111222-3");
+    expect(await listarPartes(expedienteId)).toHaveLength(1);
+  });
+
+  it("suma desde la carátula al actor, con el nombre ya normalizado y marcado como cliente", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await sumarParteDeCaratula(expedienteId, "actor");
+    if (!resultado.ok) throw new Error(resultado.error);
+
+    // El expediente de prueba tiene al estudio del lado del actor.
+    expect(resultado.valor.nombre).toBe("Nicolás Rogel");
+    expect(resultado.valor.rol).toBe("actor");
+    expect(resultado.valor.esCliente).toBe(true);
+
+    const demandada = await sumarParteDeCaratula(expedienteId, "demandado");
+    if (!demandada.ok) throw new Error(demandada.error);
+    expect(demandada.valor.nombre).toBe("Swiss Medical ART");
+    expect(demandada.valor.esCliente).toBe(false);
+  });
+
+  it("no mezcla las partes de dos expedientes", async () => {
+    const uno = await expedientePropio();
+    const otro = await crearExpediente({ ...EXPEDIENTE_BASE, numero: "9002" });
+    if (!otro.ok) throw new Error(otro.error);
+
+    await crearParte({ ...PARTE_BASE, expedienteId: uno });
+    expect(await listarPartes(uno)).toHaveLength(1);
+    expect(await listarPartes(otro.valor.id)).toHaveLength(0);
+  });
+});
+
+describe("historia del expediente", () => {
+  const DECRETO = {
+    expedienteId: "",
+    fecha: "2026-09-02",
+    fechaNotificacion: "2026-09-04",
+    tipo: "actuacion_juzgado" as const,
+    subtipo: "decreto" as const,
+    titulo: "PROVEE LA DEMANDA Y ORDENA TRASLADO POR DIEZ DIAS",
+    texto: "SAN MIGUEL DE TUCUMAN, 2 DE SEPTIEMBRE DE 2026.",
+    abreEtapa: "",
+  };
+
+  /** Un expediente propio al que cargarle la historia de cada test. */
+  async function expedientePropio(): Promise<string> {
+    const resultado = await crearExpediente(EXPEDIENTE_BASE);
+    if (!resultado.ok) throw new Error(resultado.error);
+    return resultado.valor.id;
+  }
+
+  it("guarda el título y el texto como oraciones, no como nombres propios", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await crearEntradaHistoria({ ...DECRETO, expedienteId });
+    if (!resultado.ok) throw new Error(resultado.error);
+
+    expect(resultado.valor.titulo).toBe("Provee la demanda y ordena traslado por diez dias");
+    expect(resultado.valor.texto).toBe("San miguel de tucuman, 2 de septiembre de 2026.");
+    expect(resultado.valor.origen).toBe("abogado");
+  });
+
+  it("no guarda una actuación sin una línea que diga qué fue", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await crearEntradaHistoria({ ...DECRETO, expedienteId, titulo: "  " });
+    expect(resultado.ok).toBe(false);
+  });
+
+  it("el decreto que abre una etapa mueve al expediente con la fecha del acto", async () => {
+    const expedienteId = await expedientePropio();
+    const antes = await obtenerExpediente(expedienteId);
+    // El alta lo deja en la primera etapa del ordinario.
+    expect(antes?.etapaActual).toBe("mediacion");
+
+    const resultado = await crearEntradaHistoria({
+      ...DECRETO,
+      expedienteId,
+      abreEtapa: "traslado",
+    });
+    if (!resultado.ok) throw new Error(resultado.error);
+    expect(resultado.valor.abreEtapa).toBe("traslado");
+
+    const despues = await obtenerExpediente(expedienteId);
+    expect(despues?.etapaActual).toBe("traslado");
+    expect(despues?.etapaDesde).toBe("2026-09-02");
+  });
+
+  it("descarta una etapa que no es del tipo de proceso del expediente", async () => {
+    const expedienteId = await expedientePropio();
+    const resultado = await crearEntradaHistoria({
+      ...DECRETO,
+      expedienteId,
+      abreEtapa: "lanzamiento", // es del desalojo
+    });
+    if (!resultado.ok) throw new Error(resultado.error);
+    expect(resultado.valor.abreEtapa).toBe("");
+
+    const expediente = await obtenerExpediente(expedienteId);
+    expect(expediente?.etapaActual).toBe("mediacion");
+  });
+
+  it("un acto de impulso adelanta la fecha del último movimiento y una nota no", async () => {
+    const expedienteId = await expedientePropio();
+
+    await crearEntradaHistoria({ ...DECRETO, expedienteId });
+    expect((await obtenerExpediente(expedienteId))?.ultimoMovimiento).toBe("2026-09-02");
+
+    await crearEntradaHistoria({
+      ...DECRETO,
+      expedienteId,
+      fecha: "2026-09-20",
+      tipo: "nota",
+      subtipo: "nota",
+      titulo: "Llamó el cliente para preguntar cómo venía",
+    });
+    expect((await obtenerExpediente(expedienteId))?.ultimoMovimiento).toBe("2026-09-02");
+  });
+
+  it("la historia manda sobre la fecha que traía la ficha", async () => {
+    const expedienteId = await expedientePropio();
+    // El alta deja la fecha del último movimiento en el día de hoy.
+    expect((await obtenerExpediente(expedienteId))?.ultimoMovimiento).toBe(hoy());
+
+    await crearEntradaHistoria({ ...DECRETO, expedienteId });
+
+    // Con un impulso cargado, la fecha pasa a ser la del acto aunque sea
+    // anterior: si la historia está incompleta, el expediente se ve más quieto
+    // de lo que está y el semáforo avisa de más, que es el lado seguro.
+    expect((await obtenerExpediente(expedienteId))?.ultimoMovimiento).toBe("2026-09-02");
+  });
+
+  it("entre dos actuaciones, la fecha del último movimiento es la del acto más reciente", async () => {
+    const expedienteId = await expedientePropio();
+    await crearEntradaHistoria({ ...DECRETO, expedienteId, fecha: "2026-09-02" });
+    await crearEntradaHistoria({ ...DECRETO, expedienteId, fecha: "2026-05-11" });
+    // No manda el orden en que se cargaron sino la fecha de los actos.
+    expect((await obtenerExpediente(expedienteId))?.ultimoMovimiento).toBe("2026-09-02");
+  });
+
+  it("corregir una actuación conserva su identidad y vuelve a repercutir", async () => {
+    const expedienteId = await expedientePropio();
+    const creada = await crearEntradaHistoria({ ...DECRETO, expedienteId });
+    if (!creada.ok) throw new Error(creada.error);
+
+    const guardada = await actualizarEntradaHistoria(creada.valor.id, {
+      ...DECRETO,
+      expedienteId,
+      abreEtapa: "prueba",
+    });
+    if (!guardada.ok) throw new Error(guardada.error);
+    expect(guardada.valor.id).toBe(creada.valor.id);
+
+    const expediente = await obtenerExpediente(expedienteId);
+    expect(expediente?.etapaActual).toBe("prueba");
+    expect(await listarHistoria(expedienteId)).toHaveLength(1);
+  });
+
+  it("borrar la actuación la saca de la historia sin deshacer lo que ya movió", async () => {
+    const expedienteId = await expedientePropio();
+    const creada = await crearEntradaHistoria({
+      ...DECRETO,
+      expedienteId,
+      abreEtapa: "traslado",
+    });
+    if (!creada.ok) throw new Error(creada.error);
+
+    const borrada = await eliminarEntradaHistoria(creada.valor.id);
+    expect(borrada.ok).toBe(true);
+    expect(await listarHistoria(expedienteId)).toHaveLength(0);
+
+    // La etapa y la fecha quedan donde estaban: se corrigen desde Datos.
+    const expediente = await obtenerExpediente(expedienteId);
+    expect(expediente?.etapaActual).toBe("traslado");
+    expect(expediente?.ultimoMovimiento).toBe("2026-09-02");
+  });
+
+  it("devuelve la historia de la más reciente a la más antigua", async () => {
+    const expedienteId = await expedientePropio();
+    await crearEntradaHistoria({ ...DECRETO, expedienteId, fecha: "2026-08-25" });
+    await crearEntradaHistoria({ ...DECRETO, expedienteId, fecha: "2026-09-12" });
+    await crearEntradaHistoria({ ...DECRETO, expedienteId, fecha: "2026-09-02" });
+
+    const historia = await listarHistoria(expedienteId);
+    expect(historia.map((entrada) => entrada.fecha)).toEqual([
+      "2026-09-12",
+      "2026-09-02",
+      "2026-08-25",
+    ]);
+  });
+
+  it("no mezcla la historia de dos expedientes", async () => {
+    const uno = await expedientePropio();
+    const otro = await crearExpediente({ ...EXPEDIENTE_BASE, numero: "9003" });
+    if (!otro.ok) throw new Error(otro.error);
+
+    await crearEntradaHistoria({ ...DECRETO, expedienteId: uno });
+    expect(await listarHistoria(uno)).toHaveLength(1);
+    expect(await listarHistoria(otro.valor.id)).toHaveLength(0);
   });
 });

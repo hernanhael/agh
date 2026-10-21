@@ -19,6 +19,11 @@ Lo hecho hasta ahora:
 - [x] **Configuración → Agentes**: alta, edición, duplicado y baja; cinco ejemplos editables.
 - [x] **Expedientes**: listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y filtros por juzgado, OGA, estado, materia y fuero; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
 - [x] **Caducidad de instancia** con tests (`lib/procesal`, `02-expedientes.md` §2.11): semáforo en el listado y en la ficha —en trámite, para caducidad a los seis meses (tres en incidentes), caduco— y radicación del expediente (juzgado, nominación, OGA) con la audiencia fijada.
+- [x] **Ficha del expediente por pestañas**, una ruta y una tecla de función por pestaña (`02-expedientes.md` §2.13).
+- [x] **Contabilidad del expediente**: partidas, costo total, pagado contra previsto y desglose por concepto (`02-expedientes.md` §2.12).
+- [x] **Nómina de partes**: roles, documentos y domicilios, agrupada por lado de la causa, con los letrados colgando de su representado y el arranque desde la carátula (`02-expedientes.md` §2.14).
+- [x] **Historia del expediente**: actuaciones del juzgado, presentaciones del estudio, de la contraria y de los auxiliares, documentos y notas, cada una con su texto completo consultable; el decreto que abre etapa distinguido y moviendo al expediente; filtros por lado de la causa y recorrido por las etapas (`02-expedientes.md` §2.3).
+- [x] **Editor de escritos** con el encabezado armado desde los metadatos, el formato del estudio configurable y la impresión a PDF (`02-expedientes.md` §2.5).
 - [x] Almacén JSON provisorio (`07-arquitectura.md` §3.1) para poder usar las pantallas antes de Supabase.
 
 Lo que falta:
@@ -26,12 +31,12 @@ Lo que falta:
 - Supabase inicializado y autenticación con segundo factor.
 - Migraciones del modelo de datos (`06`) con RLS; semillas copiadas al abogado como ejemplos editables; **reemplazo del almacén JSON** (requisito para desplegar).
 - **Configuración**: catálogo de plazos, plantillas de escritos, materias, juzgados, dispositivos SAE.
-- Expedientes: partes, montos y fechas clave, etapas con transiciones e historial, **historia unificada** con todos los tipos de entrada y filtros, baja lógica y archivo.
-- **Editor de escritos** con versiones, importación y exportación Word/PDF, marcado de "presentado" (sin IA todavía).
+- Expedientes: montos y fechas clave, **agenda de contactos** del estudio (hoy cada parte guarda sus datos adentro del expediente, `02-expedientes.md` §2.14), historial de transiciones de etapa, baja lógica y archivo.
+- **Editor de escritos**: versiones, texto enriquecido e importación y exportación Word (hecho el editor con encabezado desde los metadatos, el formato configurable del estudio y la impresión a PDF, `02-expedientes.md` §2.5).
 - Documentos con subida y extracción de texto.
 - Calendario de días inhábiles precargado para el motor de plazos (feriados, ferias según Acordada 840/26, asuetos).
 - Agenda: calendario, eventos, tareas, vencimientos creados desde la historia, calculadora de plazos.
-- Carga manual de actuaciones (texto y PDF). Recordatorios por correo.
+- Carga manual **asistida** de actuaciones (hoy la actuación se carga a mano, con su texto; falta que la IA proponga qué es, la resuma y calcule los plazos) y adjuntos en cada entrada. Recordatorios por correo.
 
 **Criterio de salida:** el abogado configura un tipo de proceso propio, carga un expediente real con su historia, redacta y exporta un escrito, registra una notificación y obtiene el vencimiento correcto con explicación.
 

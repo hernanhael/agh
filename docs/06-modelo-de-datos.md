@@ -53,7 +53,7 @@ erDiagram
 ### Identidad y contactos
 
 **profiles**: extensión de `auth.users`.
-`id`, `nombre`, `matricula`, `cuit`, `domicilio_electronico`, `telefono`, `preferencias jsonb` (recordatorios, modelo por defecto, centro judicial habitual, política de citas no verificadas, corrección de tildes al normalizar texto).
+`id`, `nombre`, `matricula`, `cuit`, `domicilio_electronico`, `telefono`, `preferencias jsonb` (recordatorios, modelo por defecto, centro judicial habitual, política de citas no verificadas, corrección de tildes al normalizar texto, **formato de los escritos**: tipo de letra, cuerpo, interlineado, los cuatro márgenes en centímetros, sangría, justificado y cómo sale la carátula en el encabezado — docs/02-expedientes.md §2.5).
 
 **contacts**: personas y organismos.
 `id`, `owner_id`, `tipo` (cliente | contraparte | letrado | perito | juzgado | mediador | escribano | otro), `nombre`, `documento`, `domicilio_real`, `domicilio_electronico`, `telefono`, `email`, `notas`, `es_cliente bool`, `datos_facturacion jsonb`, `deleted_at`.
@@ -92,6 +92,7 @@ La situación frente a la caducidad de instancia (en trámite | para caducidad |
 
 **case_parties**
 `id`, `case_id`, `contact_id`, `rol` (actor | demandado | tercero | citado_garantia | sindico | perito | letrado_contraria | mediador | otro), `representa_a` (contact_id, null), `notas`.
+Hasta que exista `contacts`, la parte guarda adentro el nombre, el documento, los domicilios, el teléfono y el correo, y `representa_a` apunta a otra parte del mismo expediente en lugar de a un contacto (ver `cases` y la nota de `courts`, que es el mismo arreglo provisorio). También guarda `es_cliente`, que es `cases.client_id` visto desde la parte: hay una sola por expediente. La migración consiste en crear un `contacts` por cada nombre distinto y reemplazar esos campos por `contact_id`.
 
 **stage_transitions**
 `id`, `case_id`, `etapa_desde`, `etapa_hasta`, `fecha`, `origen` (manual | ia_aprobada), `history_entry_id` (null), `ai_suggestion_id` (null), `prevista bool` (si la transición estaba en el tipo de proceso).
@@ -102,7 +103,9 @@ La situación frente a la caducidad de instancia (en trámite | para caducidad |
 ### Historia del expediente
 
 **history_entries**: línea de tiempo unificada (reemplaza a "actuaciones").
-`id`, `owner_id`, `case_id`, `fecha`, `fecha_notificacion` (null), `tipo` (actuacion_juzgado | escrito_propio | escrito_contraria | documento | evento | nota | cambio_etapa | informe_agente | conversacion), `subtipo` (proveido | cedula | interlocutoria | sentencia | audiencia | pericia | oficio | informe | demanda | contestacion | otro), `origen` (juzgado | abogado | ia_aprobada | sae), `texto`, `resumen`, `clasificado_por` (abogado | ia_aprobada | null), `ref_tipo` y `ref_id` (enlace a `documents`, `events`, `agent_reports`, `conversations` o `stage_transitions` según el tipo), `sae_import_id` (null), `tsv tsvector`.
+`id`, `owner_id`, `case_id`, `fecha`, `fecha_notificacion` (null), `tipo` (actuacion_juzgado | escrito_propio | escrito_contraria | escrito_auxiliar | documento | evento | nota | informe_agente | conversacion), `subtipo` (decreto | interlocutoria | sentencia | cedula | mandamiento | oficio | informe_actuarial | acta | demanda | contestacion | escrito | recurso | pericia | documento | nota | otro), `origen` (juzgado | abogado | ia_aprobada | sae), `texto`, `resumen`, `clasificado_por` (abogado | ia_aprobada | null), `ref_tipo` y `ref_id` (enlace a `documents`, `events`, `agent_reports`, `conversations` o `stage_transitions` según el tipo), `sae_import_id` (null), `tsv tsvector`.
+Tres cambios sobre la lista original, hechos al construir la pestaña (docs/02-expedientes.md §2.3): se agregó el tipo `escrito_auxiliar` —pericias, informes del perito, actas del mediador: piezas que el expediente tiene y que la lista no nombraba—; los subtipos pasaron a llamarse como los nombra el abogado, con `mandamiento`, `informe_actuarial` y `acta` incluidos; y se quitó el tipo `cambio_etapa`, porque la etapa la abre la actuación que la abrió, que es lo que pasó de verdad: esa entrada lleva la clave de la etapa en lugar de generar una entrada aparte.
+Hasta que exista `stage_transitions`, esa clave de etapa vive en la entrada y el expediente guarda solo la etapa actual y desde cuándo: borrar la entrada no devuelve el expediente a la etapa anterior, porque no hay dónde leer de dónde venía.
 
 **case_notes**: notas del abogado (se reflejan como `history_entries` de tipo nota).
 `id`, `case_id`, `texto`, `created_at`.

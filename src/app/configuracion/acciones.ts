@@ -40,6 +40,11 @@ function activado(datos: FormData, campo: string): boolean {
   return datos.get(campo) === "on" || datos.get(campo) === "true";
 }
 
+/** Un número escrito en un campo del formulario. `NaN` si no es un número. */
+function numero(datos: FormData, campo: string): number {
+  return Number(texto(datos, campo).replace(",", "."));
+}
+
 /** Una lista escrita por el abogado separada por comas. */
 function lista(datos: FormData, campo: string): string[] {
   return texto(datos, campo)
@@ -79,6 +84,22 @@ export async function guardarEstudio(datos: FormData): Promise<void> {
     centroJudicialHabitual: texto(datos, "centroJudicialHabitual") as CentroJudicial,
     modeloPorDefecto: texto(datos, "modeloPorDefecto"),
     correccionDeTildes: activado(datos, "correccionDeTildes"),
+    // Las medidas de la hoja llegan como texto y el repositorio las acota: acá
+    // solo se las pasa a número.
+    formatoEscrito: {
+      fuente: texto(datos, "fuente"),
+      tamanio: numero(datos, "tamanio"),
+      interlineado: numero(datos, "interlineado"),
+      margenSuperior: numero(datos, "margenSuperior"),
+      margenInferior: numero(datos, "margenInferior"),
+      margenIzquierdo: numero(datos, "margenIzquierdo"),
+      margenDerecho: numero(datos, "margenDerecho"),
+      sangria: numero(datos, "sangria"),
+      textoJustificado: activado(datos, "textoJustificado"),
+      caratulaNegrita: activado(datos, "caratulaNegrita"),
+      caratulaMayusculas: activado(datos, "caratulaMayusculas"),
+      caratulaTamanio: numero(datos, "caratulaTamanio"),
+    },
   });
   volver(RUTA_ESTUDIO, resultado, "Datos del estudio guardados.");
 }
