@@ -1,5 +1,6 @@
 export {
   clavear,
+  tipoProcesoBreve,
   nombrePropio,
   normalizarEspacios,
   normalizarParaBuscar,

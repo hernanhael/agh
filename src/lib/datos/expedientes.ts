@@ -8,6 +8,7 @@ import {
   partirCaratula,
   titulo,
 } from "@/lib/formato";
+import { tieneMarcas } from "@/lib/notas";
 import { fechaValida } from "@/lib/plazos/calendario";
 import { ahora, hoy, leerDatos, modificarDatos } from "./almacen";
 import { oficinaGestion } from "./filtros";
@@ -135,7 +136,14 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
     centroJudicial: entrada.centroJudicial,
     rolCliente: entrada.rolCliente,
     estado: entrada.estado,
-    notas: oracion(entrada.notas),
+    /*
+     * La nota se normaliza como texto libre **solo si no tiene formato**. Una
+     * nota con marcas (`lib/notas`) viene del editor de la ficha, y `oracion`
+     * le sacaría el espacio antes de cada `]` y le recalcularía las mayúsculas
+     * contando las marcas como parte de la oración: la dejaría desarmada. Las
+     * notas sin marcas se siguen normalizando igual que antes.
+     */
+    notas: tieneMarcas(entrada.notas) ? entrada.notas.trim() : oracion(entrada.notas),
     juzgadoTipo: titulo(entrada.juzgadoTipo, opciones),
     juzgadoNumero: nominacion(entrada.juzgadoNumero),
     oficinaGestion: titulo(entrada.oficinaGestion, opciones),
@@ -243,6 +251,30 @@ export async function actualizarExpediente(
         campos.ultimoMovimiento || (cambioDeEtapa ? hoy() : (expediente.ultimoMovimiento ?? "")),
       actualizadoEn: ahora(),
     });
+    return correcto(expediente);
+  });
+}
+
+/**
+ * Guarda la nota del expediente y nada más (docs/02-expedientes.md §2.1).
+ *
+ * Tiene su propia función y no pasa por `actualizarExpediente` por dos
+ * motivos. Uno: la nota se edita con un clic en la ficha, así que guardarla no
+ * puede exigir el resto del formulario ni fallar porque falte la carátula.
+ * Dos: la nota lleva **marcas de formato** (`lib/notas`) y el normalizador de
+ * texto libre las desarmaría —`oracion` saca los espacios antes de un `]` y
+ * recalcula las mayúsculas de cada oración—, así que acá se guarda tal como
+ * vino, sin más que recortar los extremos.
+ */
+export async function actualizarNotasExpediente(
+  id: string,
+  notas: string,
+): Promise<Resultado<Expediente>> {
+  return modificarDatos((datos) => {
+    const expediente = datos.expedientes.find((candidato) => candidato.id === id);
+    if (!expediente) return fallo<Expediente>("No se encontró el expediente.");
+    expediente.notas = notas.trim();
+    expediente.actualizadoEn = ahora();
     return correcto(expediente);
   });
 }

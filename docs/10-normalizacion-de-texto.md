@@ -53,6 +53,7 @@ Son datos, no código (`src/lib/formato/diccionario.ts`), para poder ampliarlos 
 ### 2.4 Lo que deliberadamente no hace
 
 - **No corrige la ortografía de las palabras en texto libre.** Decidir entre "publico", "público" y "publicó" requiere entender la oración; equivocarse cambiaría lo que escribió el abogado. El diccionario de acentos se aplica solo a nombres y títulos, donde la palabra es inequívoca.
+- **No toca el texto que trae formato.** La nota del expediente se guarda con marcas —`[b]`, `[i]`, `[u]`— para conservar la negrita, la itálica y el subrayado en una sola columna de texto (docs/02-expedientes.md §2.1). `oracion` saca los espacios antes de un `]` y recalcula las mayúsculas de cada oración contando las marcas como parte del texto: sobre una nota con formato la iría desarmando de a un guardado por vez. Así que el normalizador pregunta primero si hay marcas (`tieneMarcas`, en `lib/notas`) y, si hay, guarda lo escrito tal cual. Las notas sin marcas se normalizan como siempre.
 - **No adivina siglas en minúsculas.** `swiss medical art` queda "Swiss Medical Art": sin mayúsculas no hay forma de distinguir la aseguradora de la abreviatura de artículo.
 - **No inventa datos faltantes.** Una carátula sin `c/` ni `s/` se formatea entera como nombre propio, sin suponer partes que no están.
 

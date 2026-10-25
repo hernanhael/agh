@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clavear, nombrePropio, numeroExpediente, oracion, titulo } from "./texto";
+import {
+  clavear,
+  nombrePropio,
+  numeroExpediente,
+  oracion,
+  tipoProcesoBreve,
+  titulo,
+} from "./texto";
 
 describe("nombrePropio", () => {
   it("corrige el texto en mayúsculas del Portal y las tildes faltantes", () => {
@@ -137,5 +144,32 @@ describe("clavear", () => {
     expect(clavear("Audiencia Preliminar")).toBe("audiencia_preliminar");
     expect(clavear("  Ejecución de Sentencia ")).toBe("ejecucion_de_sentencia");
     expect(clavear("Conocimiento sumarísimo")).toBe("conocimiento_sumarisimo");
+  });
+});
+
+describe("tipoProcesoBreve", () => {
+  it("saca el género de los tipos de conocimiento", () => {
+    expect(tipoProcesoBreve("Conocimiento Ordinario")).toBe("ordinario");
+    expect(tipoProcesoBreve("Conocimiento Sumarísimo")).toBe("sumarísimo");
+  });
+
+  it("deja en minúscula los que ya son una sola palabra", () => {
+    expect(tipoProcesoBreve("Sumario")).toBe("sumario");
+    expect(tipoProcesoBreve("Ejecutivo")).toBe("ejecutivo");
+    expect(tipoProcesoBreve("Expropiación")).toBe("expropiación");
+  });
+
+  /*
+   * Lo que protege de la regla fácil: quedarse con la última palabra daría
+   * "daños" y "especial", que es lo contrario de lo que el abogado escribió.
+   */
+  it("no recorta los nombres que configuró el abogado", () => {
+    expect(tipoProcesoBreve("Ordinario por daños")).toBe("ordinario por daños");
+    expect(tipoProcesoBreve("Ejecutivo especial")).toBe("ejecutivo especial");
+  });
+
+  it("tolera el nombre vacío o con espacios de más", () => {
+    expect(tipoProcesoBreve("")).toBe("");
+    expect(tipoProcesoBreve("  Conocimiento   Ordinario  ")).toBe("ordinario");
   });
 });

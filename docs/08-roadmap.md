@@ -24,6 +24,9 @@ Lo hecho hasta ahora:
 - [x] **Nómina de partes**: roles, documentos y domicilios, agrupada por lado de la causa, con los letrados colgando de su representado y el arranque desde la carátula (`02-expedientes.md` §2.14).
 - [x] **Historia del expediente**: actuaciones del juzgado, presentaciones del estudio, de la contraria y de los auxiliares, documentos y notas, cada una con su texto completo consultable; el decreto que abre etapa distinguido y moviendo al expediente; filtros por lado de la causa y recorrido por las etapas (`02-expedientes.md` §2.3).
 - [x] **Editor de escritos** con el encabezado armado desde los metadatos, el formato del estudio configurable y la impresión a PDF (`02-expedientes.md` §2.5).
+- [x] **Ficha de Datos reducida a siete datos**, en tres grupos separados por una línea fina, con lo repetido mudado a donde ya se veía: el estado al semáforo, el fuero al juzgado, el tipo de proceso al costado del objeto (`02-expedientes.md` §2.1).
+- [x] **Nota del expediente con formato** —negrita, itálica y subrayado—, editable con un clic sobre el propio texto, guardada con marcas en la misma columna de texto y con tests del formato (`lib/notas`, `02-expedientes.md` §2.1).
+- [x] **Atajos de teclado de la ficha**: `alt+n` para la nota y `alt+e` para el formulario, los dos abren y cierran, y las teclas escritas al pasar el mouse en lugar de a la vista todo el tiempo (`02-expedientes.md` §2.13).
 - [x] Almacén JSON provisorio (`07-arquitectura.md` §3.1) para poder usar las pantallas antes de Supabase.
 
 Lo que falta:

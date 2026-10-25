@@ -13,6 +13,8 @@ import { hoy } from "./almacen";
 import { FORMATO_ESCRITO } from "./tipos";
 import { actualizarEstudio, obtenerEstudio } from "./estudio";
 import {
+  actualizarExpediente,
+  actualizarNotasExpediente,
   crearExpediente,
   listarExpedientes,
   obtenerExpediente,
@@ -194,6 +196,71 @@ describe("expedientes", () => {
     const leido = await obtenerExpediente(creado.valor.id);
     expect(leido?.caratula).toBe("Nicolás Rogel c/ Swiss Medical ART s/ Daños y Perjuicios");
     expect(await listarExpedientes()).toHaveLength(8); // siete de ejemplo + el nuevo
+  });
+
+  /*
+   * La nota del expediente se edita con un clic en la ficha y lleva marcas de
+   * formato (`lib/notas`). Lo que se prueba acá es que esas marcas lleguen
+   * intactas al almacén por los dos caminos que escriben la nota: el editor de
+   * la ficha y el formulario del expediente.
+   */
+  describe("notas con formato", () => {
+    it("guarda la nota sola, sin pedir el resto del expediente", async () => {
+      const creado = await crearExpediente(EXPEDIENTE_BASE);
+      if (!creado.ok) throw new Error(creado.error);
+
+      const guardado = await actualizarNotasExpediente(
+        creado.valor.id,
+        "Reunión el 3/10. [b]Ojo[/b]: vence el plazo de [u]prueba[/u].",
+      );
+      expect(guardado.ok).toBe(true);
+      const leido = await obtenerExpediente(creado.valor.id);
+      expect(leido?.notas).toBe("Reunión el 3/10. [b]Ojo[/b]: vence el plazo de [u]prueba[/u].");
+      // Lo demás queda como estaba: la nota no toca el resto de la ficha.
+      expect(leido?.caratula).toBe("Nicolás Rogel c/ Swiss Medical ART s/ Daños y Perjuicios");
+    });
+
+    it("avisa si el expediente no existe", async () => {
+      const guardado = await actualizarNotasExpediente("no-existe", "algo");
+      expect(guardado.ok).toBe(false);
+    });
+
+    /*
+     * El formulario del expediente manda la nota en un campo oculto, así que
+     * una nota con formato vuelve a pasar por el normalizador cada vez que se
+     * guarda cualquier otro dato. Si se normalizara, `oracion` le sacaría el
+     * espacio antes de cada `]` y le recalcularía las mayúsculas: la nota se
+     * iría desarmando de a poco, un guardado por vez.
+     */
+    it("el formulario no desarma una nota con formato", async () => {
+      const creado = await crearExpediente({
+        ...EXPEDIENTE_BASE,
+        notas: "Se presentó la demanda. [b]Ojo[/b] con el plazo [i]de prueba[/i].",
+      });
+      if (!creado.ok) throw new Error(creado.error);
+      expect(creado.valor.notas).toBe(
+        "Se presentó la demanda. [b]Ojo[/b] con el plazo [i]de prueba[/i].",
+      );
+
+      const guardado = await actualizarExpediente(creado.valor.id, {
+        ...EXPEDIENTE_BASE,
+        notas: creado.valor.notas,
+        estado: "suspendido",
+      });
+      if (!guardado.ok) throw new Error(guardado.error);
+      expect(guardado.valor.notas).toBe(
+        "Se presentó la demanda. [b]Ojo[/b] con el plazo [i]de prueba[/i].",
+      );
+    });
+
+    it("una nota sin formato se sigue normalizando como texto libre", async () => {
+      const creado = await crearExpediente({
+        ...EXPEDIENTE_BASE,
+        notas: "SE PRESENTO LA DEMANDA EL LUNES",
+      });
+      if (!creado.ok) throw new Error(creado.error);
+      expect(creado.valor.notas).toBe("Se presento la demanda el lunes");
+    });
   });
 });
 

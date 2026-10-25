@@ -81,6 +81,24 @@ input[type="search"]::-webkit-search-decoration {
   text-transform: uppercase;
 }
 
+/* Un atajo de teclado escrito al lado de lo que abre: mismo cuerpo y mismo
+   espaciado que un rótulo, pero **en minúscula**, porque un atajo se escribe
+   como se teclea ("alt+n") y no en versalitas.
+
+   Es una clase propia y no `rotulo` con la utilidad `normal-case` de Tailwind,
+   y la razón es la cascada: las utilidades van en `@layer utilities` y estas
+   clases están sin capa, y lo no encapsulado le gana a lo encapsulado sin
+   importar el orden ni la especificidad. `normal-case` perdería contra el
+   `uppercase` de `.rotulo` en cuanto las dos clases caigan en el mismo
+   elemento. Las teclas de función de las pestañas sí usan `.rotulo`, porque
+   "F1" va en mayúscula. */
+.rotulo-tecla {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
 /* Entrada escalonada de las filas del listado. Corta y discreta: acompaña al
    filtrado sin convertirlo en un espectáculo. */
 @keyframes aparecer {

@@ -37,7 +37,24 @@ La **carátula** se escribe o se pega como venga del Portal del SAE: el sistema 
 | Etapa actual | Etapa del tipo de proceso en la que está el expediente. |
 | Monto | Monto reclamado o base regulatoria, con moneda y fecha. |
 | Fechas clave | Inicio de mediación, inicio de demanda, radicación, sentencia, firmeza. |
-| Notas y etiquetas | Texto libre y etiquetas para agrupar. |
+| Notas | Texto del abogado, con **negrita, itálica y subrayado**. Se edita con un clic sobre el propio recuadro (ver abajo). |
+| Etiquetas | Etiquetas para agrupar expedientes. |
+
+**La tabla es lo que el expediente guarda; la pestaña Datos muestra menos, a propósito.** La ficha no es el volcado del registro: cada dato que sobra es un dato que hay que descartar para encontrar el que se busca. Muestra **siete**, en tres grupos separados por una línea fina —no por un recuadro cada uno, que serían cuadros dentro del cuadro de la pestaña—, y cada grupo encabeza con su respuesta:
+
+| Grupo | Encabeza | Debajo |
+|---|---|---|
+| Objeto | La materia de la causa, con el tipo de proceso al lado entre guiones (`-ordinario-`) | — |
+| Juzgado · Etapa · Último movimiento, en una fila | El juzgado con su nominación; la etapa; la fecha del último movimiento con el tiempo transcurrido ("hace 40 días") | Centro Judicial y OGA; la fecha desde la que corre la etapa; el alta en el sistema |
+| Notas | — | El texto de la nota |
+
+El dato se llama **objeto** y no materia porque así lo nombran el SAE y el abogado: es lo que dice la carátula después del "s/". La columna que se guarda sigue siendo `materia`.
+
+Lo que no está en la ficha, está donde no hace falta repetirlo: el **número** y la **carátula** en la cabecera (§2.7); el **estado** y la **clase**, resueltos en el semáforo de caducidad (§2.11); el **fuero**, dicho por el juzgado, que se elige de la misma lista; el **tipo de proceso** completo en Resumen, Historia e IA; y las **partes** en su pestaña (§2.14). Todo sigue editándose en el formulario del expediente, que se despliega al pie de la ficha.
+
+**La nota se edita con un clic sobre el texto, no con un botón ni un formulario**, que es lo que corresponde a algo que se retoca diez veces. En modo edición el recuadro toma el papel y el borde punteado de "próximo en esta pestaña" —el mismo recurso con el que la aplicación dice "esto no es definitivo"— y aparecen cuatro controles en su esquina: **B**, *I* y <u>U</u>, escritos cada uno con su propio formato, y una flecha que restaura la nota como estaba al abrirla. Se guarda al hacer clic afuera, con `Escape` o con `alt+n` de nuevo; la flecha es la que deshace, así que ninguna de las tres formas de salir pierde texto.
+
+El formato se guarda **en la misma columna de texto**, con marcas (`Reunión el 3/10. [b]Ojo[/b]: vence el plazo`), y no como HTML: el texto se vuelve a leer en el servidor para mostrarlo, y guardar HTML obligaría a inyectarlo sin escapar o a arrastrar un sanitizador. Con marcas, quien muestra la nota construye él mismo los elementos —`<strong>`, `<em>`, `<u>` y nada más—, así que **lo escrito en una nota no puede volverse etiquetas**. Las notas cargadas antes de que esto existiera no tienen marcas y se leen como lo que son, notas sin formato.
 
 **Tipos de proceso (Configuración → Tipos de proceso)**
 
@@ -197,9 +214,12 @@ El sistema sugiere agentes según la materia del expediente y la etapa actual, p
 
 ### 2.7 Vista "estado del expediente"
 
-Cabecera fija de la ficha con:
+Cabecera fija de la ficha, afuera del cuadro de pestañas y visible desde todas. Son **dos cosas y nada más**: la **identidad de la causa** —carátula y número— y el **semáforo de caducidad** (§2.11).
 
-- Tipo de proceso y etapa actual, con fecha desde la que está en esa etapa.
+Que sean dos es deliberado: la cabecera se lee en las siete pestañas, así que cada dato que se le agrega lo paga siete veces. El tipo de proceso y la etapa estuvieron acá y salieron —los dos tienen su lugar, la etapa en la ficha de Datos y en el recorrido de la historia, el tipo de proceso en Resumen, Historia e IA—, porque repetirlos arriba sumaba una línea gris que había que saltear para llegar a la carátula. Lo que queda es lo que no se puede averiguar de otra forma: de qué juicio se trata y si está en riesgo de caducar.
+
+Lo que sigue pendiente, dentro de la pestaña Resumen y no en la cabecera:
+
 - Última entrada de la historia (fecha y resumen) y última sincronización con el SAE.
 - Próximo vencimiento con días hábiles restantes.
 - Tareas abiertas y checklist de trámite pendiente.
@@ -345,9 +365,22 @@ Pendiente:
 
 La ficha del expediente es un cuadro con una pestaña por cara, y cada pestaña es una **ruta propia** (`/expedientes/<id>/partes`): se puede compartir el enlace de una pestaña y el botón de atrás funciona. `/expedientes/<id>` sin segmento lleva a la primera.
 
-Afuera del cuadro queda la cabecera fija de §2.7 —carátula, número, tipo de proceso, etapa y el semáforo—, visible en cualquier pestaña. Adentro, la tira de pestañas se reparte todo el ancho con ícono y rótulo, y cada una responde además a una **tecla de función**, en el orden de la lista: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7). La tecla va escrita debajo del rótulo porque un atajo que no se ve no existe.
+Afuera del cuadro queda la cabecera fija de §2.7 —carátula, número y el semáforo—, visible en cualquier pestaña. Adentro, la tira de pestañas se reparte todo el ancho con ícono y rótulo, y cada una responde además a una **tecla de función**, en el orden de la lista: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7).
 
 El orden de las pestañas vive en un solo lugar (`src/app/expedientes/[id]/pestanas.ts`) y de ahí salen la tira, los atajos y las rutas, con un test que verifica que las tres cosas no se separen.
+
+**Los atajos están escritos, pero solo se ven al pasar el mouse por encima.** Un atajo que no se ve no existe, así que tiene que estar escrito; pero una vez aprendido es ruido, y son siete rótulos grises repetidos en todas las pestañas de todos los expedientes. Mostrarlo cuando la mano ya está yendo hacia ahí deja las dos cosas: se descubre buscándolo y no estorba el resto del tiempo. El lugar queda reservado y lo que cambia es la opacidad, así que nada se mueve al aparecer, y el atajo sigue en el `title` de cada pestaña, que es de donde lo toma el lector de pantalla.
+
+Dentro de la pestaña **Datos** hay dos atajos más, con la misma regla: aparecen al pasar el mouse, en minúscula, al lado de lo que abren.
+
+| Atajo | Abre y cierra | También cierra con |
+|---|---|---|
+| `alt+n` | La nota, en edición | `Escape`, clic afuera |
+| `alt+e` | El formulario del expediente | `Escape` |
+
+Los dos van con `Alt` y no con `Ctrl` por una razón del navegador: **Chrome en Windows se reserva `Ctrl+N`** para abrir una ventana nueva y no le entrega el evento a la página, así que no hay forma de tomarlo. Con la nota forzada a `Alt`, el expediente lo acompaña: dos atajos de la misma pantalla con modificadores distintos se recuerdan peor que dos iguales. Queda una reserva sobre `alt+e`, que en Chrome abre el menú de tres puntos; el evento sí llega a la página y se cancela, pero si algún navegador no cediera el atajo, la letra se cambia en un solo lugar (`src/app/expedientes/[id]/atajos.ts`) y las pantallas no se tocan.
+
+El mismo atajo abre y cierra, así no hay que acordarse de dos. Y `Escape` adentro del editor de la nota es **de la nota**: sin esa salvedad, una nota abierta encima del formulario abierto cerraría las dos cosas con una sola tecla.
 
 ### 2.14 Las partes del expediente
 

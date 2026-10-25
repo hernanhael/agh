@@ -107,7 +107,7 @@ export default async function EstudioPage({
 
         <div className="grid gap-4 border-t border-linea pt-6 sm:grid-cols-2">
           <Campo
-            etiqueta="Centro judicial habitual"
+            etiqueta="Centro Judicial habitual"
             ayuda="Se propone al dar de alta un expediente."
           >
             <select

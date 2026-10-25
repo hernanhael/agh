@@ -281,3 +281,24 @@ export function clavear(texto: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
+
+/**
+ * El tipo de proceso en la forma breve con la que se lo nombra al pasar:
+ * "Conocimiento Ordinario" → "ordinario".
+ *
+ * Se le saca el "Conocimiento" de adelante —que es el género y no distingue
+ * nada, porque lo llevan todos los de conocimiento— y se baja a minúscula,
+ * porque va como apunte al costado de un dato y no como título.
+ *
+ * **No se queda con la última palabra**, que para el catálogo de ejemplo daría
+ * lo mismo y es la regla que uno escribiría primero. Los tipos de proceso los
+ * configura el abogado (docs/02-expedientes.md §2.1), así que un nombre propio
+ * como "Ordinario por daños" se mostraría como "daños", que es lo contrario de
+ * lo que el nombre dice. Con esta regla, en el peor caso se muestra el nombre
+ * completo en minúscula, que es largo pero nunca equivocado.
+ */
+export function tipoProcesoBreve(nombre: string): string {
+  return normalizarEspacios(nombre)
+    .replace(/^conocimiento\s+/i, "")
+    .toLowerCase();
+}

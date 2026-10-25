@@ -88,7 +88,7 @@ export function FormularioExpediente({
             className={claseEntrada}
           />
         </Campo>
-        <Campo etiqueta="Centro judicial" className="sm:col-span-2">
+        <Campo etiqueta="Centro Judicial" className="sm:col-span-2">
           <select
             name="centroJudicial"
             defaultValue={expediente?.centroJudicial ?? centroJudicialHabitual}
@@ -388,14 +388,27 @@ export function FormularioExpediente({
         </Campo>
       </div>
 
-      <Campo etiqueta="Notas">
-        <textarea
-          name="notas"
-          rows={3}
-          defaultValue={expediente?.notas ?? ""}
-          className={claseEntrada}
-        />
-      </Campo>
+      {/*
+        La nota de un expediente que ya existe se edita en la ficha, con un
+        clic y con formato (`NotaExpediente`). Acá viaja en un campo oculto y
+        no en un `textarea` por dos razones: dos editores del mismo campo se
+        pisan —el último en guardar gana—, y este mostraría las marcas de
+        formato en crudo y las devolvería como texto plano.
+
+        Oculto pero presente: la acción arma la entrada completa desde el
+        formulario, así que si el campo no viajara, guardar cualquier otro dato
+        borraría la nota.
+
+        En el alta sí es un `textarea`: todavía no hay ficha donde hacer el
+        clic, y una nota recién escrita no tiene formato que perder.
+      */}
+      {expediente ? (
+        <input type="hidden" name="notas" value={expediente.notas} />
+      ) : (
+        <Campo etiqueta="Notas" ayuda="Después se edita desde la ficha, con formato.">
+          <textarea name="notas" rows={3} defaultValue="" className={claseEntrada} />
+        </Campo>
+      )}
 
       <div className="flex justify-end">
         <button type="submit" className={claseBotonPrimario}>

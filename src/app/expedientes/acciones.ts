@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   actualizarEntradaHistoria,
   actualizarExpediente,
+  actualizarNotasExpediente,
   actualizarParte,
   crearEntradaHistoria,
   crearExpediente,
@@ -84,6 +85,32 @@ export async function guardarExpediente(datos: FormData): Promise<void> {
     ? `hecho=${encodeURIComponent("Cambios guardados.")}`
     : `error=${encodeURIComponent(resultado.error)}`;
   redirect(`/expedientes/${id}?${parametro}`);
+}
+
+/**
+ * Guarda la nota del expediente desde el editor de la ficha
+ * (docs/02-expedientes.md §2.1).
+ *
+ * Es la única acción del área que recibe argumentos en lugar de un `FormData`
+ * y que no redirige, y las dos cosas son por lo mismo: no la dispara un
+ * formulario sino un clic afuera del recuadro de la nota. Armar un `FormData`
+ * para dos cadenas sería ceremonia, y redirigir con `?hecho=` sacaría al
+ * abogado de donde está escribiendo.
+ *
+ * Devuelve el error en lugar de lanzarlo para que el editor pueda quedarse
+ * abierto con el texto intacto si el guardado falla.
+ */
+export async function guardarNotas(
+  expedienteId: string,
+  notas: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const resultado = await actualizarNotasExpediente(expedienteId, notas);
+  if (!resultado.ok) return { ok: false, error: resultado.error };
+  // La nota se lee en la ficha y en ningún otro lado, pero se revalida el
+  // layout por la misma razón que `guardarExpediente`: la pestaña no es la
+  // unidad de caché, el expediente sí.
+  revalidatePath(`/expedientes/${expedienteId}`, "layout");
+  return { ok: true };
 }
 
 export async function borrarExpediente(datos: FormData): Promise<void> {

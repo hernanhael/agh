@@ -31,6 +31,7 @@ export {
 } from "./agentes";
 export {
   actualizarExpediente,
+  actualizarNotasExpediente,
   crearExpediente,
   eliminarExpediente,
   listarExpedientes,

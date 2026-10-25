@@ -19,8 +19,15 @@ import { PESTANAS, rutaPestana, teclaDePestana } from "./pestanas";
  * muestra y se esconde. De ahí `aria-current="page"` en la abierta.
  *
  * Además responden a las **teclas de función**: F1 lleva a la primera pestaña,
- * F2 a la segunda, y así hasta la última (`pestanas.ts` fija el orden). La
- * tecla va escrita debajo del rótulo porque un atajo que no se ve no existe.
+ * F2 a la segunda, y así hasta la última (`pestanas.ts` fija el orden).
+ *
+ * La tecla va escrita debajo del rótulo, pero **solo se ve al pasar el mouse
+ * por la tira**. Un atajo que no se ve no existe, así que tiene que estar
+ * escrito; pero una vez aprendido es ruido, y son siete rótulos grises
+ * repetidos en todas las pestañas de todos los expedientes. Mostrarlo cuando
+ * la mano ya está yendo hacia ahí deja las dos cosas: se descubre buscándolo y
+ * no estorba el resto del tiempo. Sigue en el `title` de cada pestaña, que es
+ * de donde lo toma el lector de pantalla.
  */
 export function PestanasExpediente({ expedienteId }: { expedienteId: string }) {
   const pathname = usePathname();
@@ -88,9 +95,23 @@ export function PestanasExpediente({ expedienteId }: { expedienteId: string }) {
             >
               {pestana.etiqueta}
             </span>
+            {/*
+              La tecla aparece en **la pestaña apuntada** y solo en esa: el
+              `group` es el enlace, así que `group-hover` responde a esa pestaña
+              y no a la tira.
+
+              Está siempre en el flujo y lo que cambia es su opacidad, no si
+              existe: ocultarla con `hidden` encogería la pestaña de tres líneas
+              a dos y la tira entera saltaría al pasar el mouse por encima, que
+              es el gesto que la revela. Así el lugar ya está reservado y lo
+              único que pasa es que aparece la letra.
+
+              `group-focus-visible` suma el teclado: quien se mueve con el
+              tabulador no tiene mouse con el que descubrirlas.
+            */}
             <span
               aria-hidden
-              className={`rotulo leading-none ${
+              className={`rotulo leading-none opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 ${
                 abierta ? "text-acento/70" : "text-zinc-400 dark:text-zinc-500"
               }`}
             >
