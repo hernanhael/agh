@@ -17,8 +17,10 @@ import {
   eliminarParte,
   sumarParteDeCaratula,
   type CargaDeEntrada,
+  type CaracterParte,
   type CentroJudicial,
   type ClaseExpediente,
+  type Comparecencia,
   type ConceptoGasto,
   type EntradaExpediente,
   type EntradaParte,
@@ -172,6 +174,12 @@ function entradaParte(datos: FormData): EntradaParte {
     telefono: texto(datos, "telefono"),
     email: texto(datos, "email"),
     representaA: texto(datos, "representaA"),
+    cesoEl: texto(datos, "cesoEl"),
+    caracter: texto(datos, "caracter") as CaracterParte,
+    // La opción vacía del desplegable es un valor válido: significa "lo que
+    // corresponda a su rol", y el repositorio la guarda como tal.
+    comparecencia: texto(datos, "comparecencia") as Comparecencia | "",
+    comparecioEl: texto(datos, "comparecioEl"),
     // Una casilla sin marcar no viaja en el formulario: no está es `false`.
     esCliente: datos.get("esCliente") !== null,
     notas: texto(datos, "notas"),

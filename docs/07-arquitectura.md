@@ -85,7 +85,8 @@ app/
     nuevo/           alta con previsualización de carátula
     [id]/            ficha por pestañas: una ruta por pestaña (02-expedientes.md §2.13)
       datos/           metadatos del expediente y formulario de edición
-      partes/          nómina de partes: roles, documentos y domicilios (§2.14)
+      partes/          nómina de partes en tarjetas: rol, carácter, comparecencia,
+                       domicilio digital y abogado actual (§2.14)
       agenda/          audiencia fijada y plazo de caducidad corriendo
       historia/        línea de tiempo del expediente, recorrido por las etapas
                        y editor de escritos (§2.3 y §2.5)
@@ -94,6 +95,8 @@ app/
       ia/              agentes que intervienen en el expediente (§2.6)
       pestanas.ts      el orden de las pestañas, sus íconos y sus teclas de función (con test)
       cargar.ts        lecturas compartidas por el cuadro y sus pestañas
+      atajos.ts        los atajos de adentro de una pestaña: nota, expediente, parte
+      Desplegable.tsx  el `<details>` con atajo de teclado que comparten Datos y Partes
     acciones.ts      acciones de servidor del área: expediente, contabilidad,
                      partes, historia y escritos
   ia/                conversaciones e informes (los agentes se configuran en configuracion/)
@@ -160,11 +163,11 @@ Hasta que esté montado Supabase, los repositorios de `lib/datos/` guardan en un
 
 El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos`, `lib/datos/filtros`, `lib/procesal` y `lib/escritos`.
 
-Hay dos componentes de cliente en toda la aplicación y los dos lo son por una razón concreta: el listado de expedientes, que filtra mientras se tipea, y el editor de escritos, donde la hoja se tiene que ver cambiar mientras se escribe. Todo lo demás son formularios HTML con una acción de servidor.
+Los componentes de cliente se cuentan con los dedos y cada uno lo es por una razón concreta: el **listado de expedientes**, que filtra mientras se tipea; el **editor de escritos**, donde la hoja se tiene que ver cambiar mientras se escribe; la **nota del expediente**, que necesita selección de texto; y el **desplegable con atajo** de Datos y Partes, que necesita el teclado. Todo lo demás son formularios HTML con una acción de servidor, y las tarjetas de la nómina se abren con un `<details>`, sin JavaScript propio.
 
 ### 3.3 Reglas procesales
 
-`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11), la **audiencia fijada** (`audiencia.ts`), la **nómina de partes** (`partes.ts`: lados de la causa, representantes, conciliación con la carátula, §2.14), la **historia** (`historia.ts`: qué cuenta como acto de impulso, mezcla con los hechos de la ficha, filtros, §2.3) y el **recorrido por las etapas** (`recorrido.ts`: qué se cumplió y qué falta).
+`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11), la **audiencia fijada** (`audiencia.ts`), la **nómina de partes** (`partes.ts`: lados y áreas de la causa, orden de las tarjetas, comparecencia resuelta por rol, letrados actuales y cesados, particularidad del carácter, conciliación con la carátula, §2.14), la **historia** (`historia.ts`: qué cuenta como acto de impulso, mezcla con los hechos de la ficha, filtros, §2.3) y el **recorrido por las etapas** (`recorrido.ts`: qué se cumplió y qué falta).
 
 Es puro como `lib/plazos` y por los mismos motivos: corre en el servidor y en el cliente con el mismo resultado —el listado muestra el semáforo de caducidad mientras el abogado filtra— y se testea con fechas fijas. Dos reglas que se siguen de eso:
 

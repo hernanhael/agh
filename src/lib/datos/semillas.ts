@@ -646,14 +646,35 @@ export const GASTOS_EJEMPLO: Gasto[] = [
 ];
 
 /**
- * Nómina de partes de ejemplo, toda sobre el expediente Rogel: un ordinario de
- * daños contra una ART (docs/02-expedientes.md §2.14).
+ * Nóminas de partes de ejemplo, sobre dos expedientes: el ordinario de daños
+ * contra una ART (Rogel) y el sucesorio (Díaz) (docs/02-expedientes.md §2.14).
  *
- * Está armada para que se vea la pestaña entera con un caso típico: los dos
- * lados de la carátula, la aseguradora citada en garantía, el letrado de la
- * contraria colgando de su representada, y el perito y la mediadora como
- * auxiliares. El demandado queda **sin domicilio electrónico** a propósito, que
- * es el aviso que la pestaña muestra cuando falta la casilla del SAE.
+ * Están armadas para que se vea el **tablero entero**, y cada parte está
+ * puesta para mostrar un estado distinto de la tarjeta.
+ *
+ * El de Rogel es un accidente de trabajo demandado contra la ART y contra la
+ * empleadora, con la aseguradora de la empleadora citada en garantía y la
+ * dueña de la máquina traída como tercero. Las ocho tarjetas recorren los dos
+ * lados del pleito y la columna de los auxiliares:
+ *
+ * | Parte | Lo que muestra |
+ * |---|---|
+ * | Nicolás Rogel | el cliente: filete del acento y "el estudio" como abogado |
+ * | Hugo Maidana | uno de los míos que no es el cliente: filete apagado |
+ * | Swiss Medical ART | dos letrados actuales ("+1") y una letrada que cesó |
+ * | Citrícola del Valle SA | la codemandada, con su propio letrado |
+ * | La Segunda Seguros | la citada en garantía, que todavía no compareció |
+ * | Maquinarias del Norte SRL | el tercero citado, declarado **rebelde** |
+ * | Silvia Juárez | la perito: no comparece y no lleva letrado |
+ * | Ana Carrizo | la mediadora: una tarjeta sin ninguna señal |
+ *
+ * Dos quedan **sin domicilio electrónico** a propósito, que es el aviso que la
+ * tarjeta muestra cuando falta la casilla del SAE.
+ *
+ * El de Díaz es el que muestra **los caracteres**: una heredera que es la
+ * clienta, un heredero menor de edad asistido por la Defensoría Oficial y una
+ * acreedora que todavía no compareció. Son los tres casos en los que la
+ * tarjeta deja de ser un nombre con un rol y advierte algo.
  *
  * Los documentos, domicilios y teléfonos son **inventados**: son un ejemplo
  * editable como cualquier otra semilla.
@@ -670,8 +691,59 @@ export const PARTES_EJEMPLO: Parte[] = [
     telefono: "381 555 0101",
     email: "",
     representaA: "",
+    cesoEl: "",
+    caracter: "por_si",
+    // Presentar la demanda es su comparecencia: la fecha es la del escrito
+    // que está en la historia de este mismo expediente.
+    comparecencia: "comparecio",
+    comparecioEl: "2026-08-25",
     esCliente: true,
     notas: "Accidente de trabajo del 12/03/2026. Alta médica con incapacidad parcial.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * El compañero de trabajo accidentado en el mismo hecho, que demandó junto
+     * con el cliente. Es el que muestra el **filete apagado**: está del lado
+     * del estudio pero no es el cliente, así que la contabilidad y la
+     * rendición no son suyas.
+     */
+    id: "pa-rogel-coactor",
+    expedienteId: "ex-rogel",
+    rol: "actor",
+    nombre: "Hugo Maidana",
+    documento: "27.998.112",
+    domicilioReal: "Pasaje Las Piedras 77, Banda del Río Salí",
+    domicilioElectronico: "20-27998112-5",
+    telefono: "381 555 0505",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "litisconsorte",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-08-25",
+    esCliente: false,
+    notas: "Accidentado en el mismo hecho. Demandó junto con el cliente.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-letrada-coactor",
+    expedienteId: "ex-rogel",
+    rol: "letrado_contraria",
+    nombre: "Verónica Suárez",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "27-26334455-9",
+    telefono: "381 555 0606",
+    email: "",
+    representaA: "pa-rogel-coactor",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Patrocina al coactor. Firmó la demanda junto con el estudio.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },
@@ -687,6 +759,10 @@ export const PARTES_EJEMPLO: Parte[] = [
     telefono: "",
     email: "",
     representaA: "",
+    cesoEl: "",
+    caracter: "persona_juridica",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-09-12",
     esCliente: false,
     notas: "",
     creadoEn: AHORA,
@@ -703,8 +779,145 @@ export const PARTES_EJEMPLO: Parte[] = [
     telefono: "381 555 0202",
     email: "",
     representaA: "pa-rogel-demandada",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
     esCliente: false,
     notas: "Apoderado de la ART. Contestó la demanda el 12/09/2026.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    // La segunda letrada actual de la ART: es la que hace que la señal del
+    // abogado diga "Fernando Ledesma +1" en lugar de un nombre solo.
+    id: "pa-rogel-letrada-2",
+    expedienteId: "ex-rogel",
+    rol: "letrado_contraria",
+    nombre: "Lucía Ferreyra",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "27-29556677-2",
+    telefono: "381 555 0707",
+    email: "",
+    representaA: "pa-rogel-demandada",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Apoderada de la ART, junto con Ledesma.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    // La letrada que llevaba el caso antes: no se borra, baja a "letrados
+    // anteriores" en la ficha de su representada, porque lo que presentó
+    // mientras la representaba sigue en el expediente.
+    id: "pa-rogel-letrada-anterior",
+    expedienteId: "ex-rogel",
+    rol: "letrado_contraria",
+    nombre: "Marta Villagra",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "27-24111222-8",
+    telefono: "381 555 0404",
+    email: "",
+    representaA: "pa-rogel-demandada",
+    cesoEl: "2026-09-10",
+    caracter: "por_si",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Renunció al patrocinio antes de la contestación.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    // La empleadora, demandada junto con la ART por la acción civil. La
+    // carátula no la nombra porque nombra al primero de cada lado.
+    id: "pa-rogel-empleadora",
+    expedienteId: "ex-rogel",
+    rol: "demandado",
+    nombre: "Citrícola del Valle SA",
+    documento: "30-71234567-2",
+    domicilioReal: "Ruta 301 km 8, Lules",
+    domicilioElectronico: "30-71234567-2",
+    telefono: "381 555 0808",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "litisconsorte",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-09-12",
+    esCliente: false,
+    notas: "Empleadora al momento del accidente. Citó en garantía a su aseguradora.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-rogel-letrado-empleadora",
+    expedienteId: "ex-rogel",
+    rol: "letrado_contraria",
+    nombre: "Ignacio Brizuela",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "20-23445566-7",
+    telefono: "381 555 0909",
+    email: "",
+    representaA: "pa-rogel-empleadora",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Apoderado de la empleadora.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * La aseguradora que la empleadora trajo al pleito: es la única tarjeta
+     * con el ícono del paraguas, y la que muestra el "no compareció" en gris
+     * —todavía está corriendo su plazo— junto al ámbar de la casilla faltante.
+     */
+    id: "pa-rogel-citada-garantia",
+    expedienteId: "ex-rogel",
+    rol: "citado_garantia",
+    nombre: "La Segunda Cooperativa Limitada de Seguros",
+    documento: "30-50001234-0",
+    domicilioReal: "Avenida Sarmiento 1020, San Miguel de Tucumán",
+    domicilioElectronico: "",
+    telefono: "",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "persona_juridica",
+    comparecencia: "pendiente",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Citada en garantía por la empleadora. Póliza de responsabilidad civil.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * La dueña de la máquina, traída al pleito sin que haya venido por su
+     * cuenta. Es la tarjeta de la **rebeldía**, que es el único estado de la
+     * comparecencia que la nómina muestra en ámbar.
+     */
+    id: "pa-rogel-tercero",
+    expedienteId: "ex-rogel",
+    rol: "tercero",
+    nombre: "Maquinarias del Norte SRL",
+    documento: "30-70998877-4",
+    domicilioReal: "Avenida Roca 2450, San Miguel de Tucumán",
+    domicilioElectronico: "",
+    telefono: "",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "citado_coactivo",
+    comparecencia: "rebelde",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Dueña de la máquina. Declarada rebelde el 25/09/2026.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },
@@ -719,6 +932,9 @@ export const PARTES_EJEMPLO: Parte[] = [
     telefono: "",
     email: "",
     representaA: "",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
     esCliente: false,
     notas: "Perito médica designada de oficio. Pericia pendiente de realización.",
     creadoEn: AHORA,
@@ -735,8 +951,99 @@ export const PARTES_EJEMPLO: Parte[] = [
     telefono: "381 555 0303",
     email: "",
     representaA: "",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecioEl: "",
     esCliente: false,
     notas: "Condujo la mediación prejudicial, cerrada sin acuerdo el 20/08/2026.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+
+  /*
+   * Sucesorio de Rosa Díaz: el ejemplo de los **caracteres**. Los herederos
+   * están del lado actor porque son quienes promueven, y la acreedora que
+   * denunció su crédito va como tercero, que es donde la nómina pone a quien
+   * interviene sin ser actor ni demandado.
+   */
+  {
+    id: "pa-diaz-heredera",
+    expedienteId: "ex-diaz",
+    rol: "actor",
+    nombre: "Carla Díaz",
+    documento: "28.456.789",
+    domicilioReal: "Laprida 180, Concepción",
+    domicilioElectronico: "27-28456789-4",
+    telefono: "3865 55 0110",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "heredero",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-07-14",
+    esCliente: true,
+    notas: "Hija de la causante. Promovió el sucesorio.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-diaz-heredero-menor",
+    expedienteId: "ex-diaz",
+    rol: "actor",
+    nombre: "Tomás Díaz",
+    documento: "55.123.456",
+    domicilioReal: "Laprida 180, Concepción",
+    domicilioElectronico: "",
+    telefono: "",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    // El carácter que más cambia el trámite: la tarjeta avisa que interviene
+    // el Ministerio Pupilar y que el niño tiene derecho a ser oído.
+    caracter: "menor",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-07-14",
+    esCliente: false,
+    notas: "Nieto de la causante, por la porción de su padre premuerto.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-diaz-defensoria",
+    expedienteId: "ex-diaz",
+    rol: "letrado_contraria",
+    nombre: "Defensoría Oficial Civil de Concepción",
+    documento: "",
+    domicilioReal: "",
+    domicilioElectronico: "30-99887766-1",
+    telefono: "3865 55 0222",
+    email: "",
+    representaA: "pa-diaz-heredero-menor",
+    cesoEl: "",
+    caracter: "defensoria_oficial",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Asiste al heredero menor de edad.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    id: "pa-diaz-acreedora",
+    expedienteId: "ex-diaz",
+    rol: "tercero",
+    nombre: "Mutual del Sur",
+    documento: "30-70112233-6",
+    domicilioReal: "Alberdi 95, Concepción",
+    domicilioElectronico: "",
+    telefono: "",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "citado_voluntario",
+    comparecencia: "pendiente",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Denunció un crédito contra la causante. Todavía no se presentó.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },

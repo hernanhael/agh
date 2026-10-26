@@ -1,5 +1,10 @@
 import { Campo, claseBotonPrimario, claseEntrada } from "@/components/ui";
-import { ROLES_PARTE, type Parte } from "@/lib/datos/tipos";
+import {
+  CARACTERES_PARTE,
+  COMPARECENCIAS,
+  ROLES_PARTE,
+  type Parte,
+} from "@/lib/datos/tipos";
 import { agregarParte, guardarParte } from "../../acciones";
 
 /**
@@ -51,6 +56,26 @@ export function FormularioParte({
             ))}
           </select>
         </Campo>
+        {/*
+          El carácter va al lado del rol porque son la misma pregunta en dos
+          mitades: qué lugar ocupa en la causa y cómo está parado ahí. "Por
+          derecho propio" es el caso normal y encabeza la lista; los demás
+          arrastran una particularidad que la ficha de la parte muestra como
+          aviso en cuanto se los elige.
+        */}
+        <Campo etiqueta="Carácter con el que interviene">
+          <select
+            name="caracter"
+            defaultValue={parte?.caracter ?? "por_si"}
+            className={claseEntrada}
+          >
+            {CARACTERES_PARTE.map((caracter) => (
+              <option key={caracter.valor} value={caracter.valor}>
+                {caracter.etiqueta} — {caracter.detalle}
+              </option>
+            ))}
+          </select>
+        </Campo>
         <Campo etiqueta="DNI o CUIT" ayuda="Como figura en el expediente.">
           <input
             type="text"
@@ -69,6 +94,35 @@ export function FormularioParte({
             name="domicilioElectronico"
             defaultValue={parte?.domicilioElectronico}
             placeholder="20-12345678-9"
+            className={claseEntrada}
+          />
+        </Campo>
+        {/*
+          La comparecencia arranca **sin elegir**: lo que corresponde a cada rol
+          lo resuelve `comparecenciaDe` al leer (`lib/procesal/partes`), así que
+          la opción vacía no es un dato faltante sino "lo normal para este rol".
+          Elegir una la fija y deja de depender del rol, que es lo que hace
+          falta el día que la demandada se presenta.
+        */}
+        <Campo etiqueta="Comparecencia" ayuda="Vacío: lo que corresponda a su rol.">
+          <select
+            name="comparecencia"
+            defaultValue={parte?.comparecencia ?? ""}
+            className={claseEntrada}
+          >
+            <option value="">Según el rol</option>
+            {COMPARECENCIAS.map((estado) => (
+              <option key={estado.valor} value={estado.valor}>
+                {estado.etiqueta} — {estado.detalle}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo etiqueta="Compareció el" ayuda="Solo si se presentó.">
+          <input
+            type="date"
+            name="comparecioEl"
+            defaultValue={parte?.comparecioEl}
             className={claseEntrada}
           />
         </Campo>
@@ -120,6 +174,24 @@ export function FormularioParte({
               </option>
             ))}
           </select>
+        </Campo>
+        {/*
+          Cesar es dejar de representar, así que el campo va pegado a "representa
+          a" y el repositorio lo descarta en quien no representa a nadie. El
+          letrado que cesó **no se borra**: baja a "letrados anteriores" en la
+          ficha de su representado, porque lo que presentó mientras lo
+          representaba sigue en el expediente.
+        */}
+        <Campo
+          etiqueta="Cesó en la representación el"
+          ayuda="Renuncia, revocación del poder, cambio de abogado."
+        >
+          <input
+            type="date"
+            name="cesoEl"
+            defaultValue={parte?.cesoEl}
+            className={claseEntrada}
+          />
         </Campo>
         <Campo etiqueta="Notas" className="sm:col-span-2">
           <input

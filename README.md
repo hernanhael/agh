@@ -6,10 +6,11 @@ Plataforma para asistir al abogado litigante durante la tramitación del proceso
 
 La **ficha del expediente** es un cuadro de pestañas, cada una con su propia ruta y su tecla de función: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7) (`docs/02-expedientes.md` §2.13).
 
-Dos reglas propias ya aplicadas sobre el expediente:
+Tres piezas ya aplicadas sobre el expediente:
 
 - **Caducidad de instancia**: el listado la informa con un semáforo —en trámite, para caducidad a los seis meses (tres en los incidentes), caduco— y la ficha explica su cómputo (`docs/02-expedientes.md` §2.11).
 - **Contabilidad del expediente**: partidas con su concepto y situación, costo total del juicio, lo pagado contra lo previsto y el desglose de en qué se va el dinero. El objetivo de fondo es el promedio de costo por materia, para poder cotizarle un juicio a un cliente antes de iniciarlo (`docs/02-expedientes.md` §2.12).
+- **Nómina de partes**: un tablero de tarjetas, el pleito de un lado y los terceros y auxiliares del otro, con el rol, el carácter con el que se interviene —heredero, menor de edad, Defensoría Oficial, tercero citado—, si compareció, si tiene domicilio digital y quién es su abogado hoy, leíbles sin abrir la tarjeta (`docs/02-expedientes.md` §2.14).
 
 Pendiente para desplegar: Supabase y autenticación — los datos viven hoy en un archivo JSON local (`docs/07-arquitectura.md` §3.1).
 

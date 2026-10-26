@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { esAtajoExpediente } from "../atajos";
+import { esAtajoAlt } from "./atajos";
 
 /**
- * El desplegable "Editar expediente" de la ficha, con su teclado
- * (`alt+e`, ver `atajos.ts`).
+ * Un desplegable del expediente con su atajo de teclado: el "Editar
+ * expediente" de la ficha de Datos (`alt+e`) y el "Agregar parte" de la
+ * nómina (`alt+p`) son el mismo componente con otra tecla.
  *
- * Es de cliente por una sola razón, el teclado: el formulario que va adentro y
- * el botón de borrar se siguen renderizando en el servidor y llegan como
- * `children`, así que el componente no sabe nada de lo que contiene.
+ * Es de cliente por una sola razón, el teclado: lo que va adentro —un
+ * formulario, un botón de borrar— se sigue renderizando en el servidor y llega
+ * como `children`, así que el componente no sabe nada de lo que contiene. Por
+ * eso recibe **el código de la tecla** y no una función: lo que cruza la
+ * frontera servidor/cliente tiene que poder serializarse, y `"KeyE"` puede.
  *
- * - **`alt+e`** abre y cierra: el mismo atajo para las dos cosas, así no hay
- *   que acordarse de dos.
+ * - **`alt`+la tecla** abre y cierra: el mismo atajo para las dos cosas, así
+ *   no hay que acordarse de dos.
  * - **`Escape`** cierra, igual que en la nota.
  *
  * Cerrar no pierde nada de lo escrito: un `<details>` cerrado esconde su
@@ -24,10 +27,13 @@ import { esAtajoExpediente } from "../atajos";
  * clic es lo que el elemento ya hace solo, y controlarlo obligaría a replicar
  * ese comportamiento con un `onToggle` para no pelearse con el navegador.
  */
-export function EditarExpediente({
+export function Desplegable({
+  codigo,
   className,
   children,
 }: {
+  /** La tecla física del atajo, como la nombra `KeyboardEvent.code`: "KeyE". */
+  codigo: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -54,10 +60,10 @@ export function EditarExpediente({
       const elemento = detalle.current;
       if (!elemento || evento.repeat) return;
 
-      if (esAtajoExpediente(evento)) {
+      if (esAtajoAlt(evento, codigo)) {
         // En Chrome `Alt+E` abre el menú de tres puntos: acá manda el
-        // formulario del expediente. Si el navegador no cede el atajo, la letra
-        // se cambia en `atajos.ts` y esta pantalla no se toca.
+        // desplegable. Si el navegador no cede el atajo, la letra se cambia en
+        // `atajos.ts` y las pantallas no se tocan.
         evento.preventDefault();
         if (elemento.open) cerrar(elemento);
         else abrir(elemento);
@@ -81,7 +87,7 @@ export function EditarExpediente({
 
     window.addEventListener("keydown", alPresionar);
     return () => window.removeEventListener("keydown", alPresionar);
-  }, []);
+  }, [codigo]);
 
   return (
     <details ref={detalle} className={className}>

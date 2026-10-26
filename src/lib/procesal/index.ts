@@ -36,13 +36,22 @@ export {
 } from "./historia";
 export {
   agruparPartes,
+  AREAS_PARTE,
+  caracterDe,
   clienteDeLaNomina,
+  comparece,
+  comparecenciaDe,
   faltantesDeCaratula,
   LADOS_PARTE,
   ladoDeRol,
+  ladoDelCliente,
+  letradosDe,
+  particularidadDe,
   seNotifica,
+  type AreaParte,
   type FaltanteDeCaratula,
   type GrupoPartes,
   type LadoParte,
+  type Letrados,
   type ParteConRepresentantes,
 } from "./partes";

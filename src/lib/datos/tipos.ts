@@ -444,8 +444,16 @@ export const ESTADOS_GASTO: ReadonlyArray<{
  * Qué es esa persona en el juicio. Es la lista de `case_parties.rol`.
  *
  * `citado_garantia` es la aseguradora traída al pleito por el demandado, y
- * `letrado_contraria` el abogado de enfrente: no son partes en sentido estricto
- * pero son con quienes se litiga, así que van en la misma nómina.
+ * `letrado_contraria` el abogado de cualquiera de las partes: no son partes en
+ * sentido estricto pero son con quienes se litiga, así que van en la misma
+ * nómina.
+ *
+ * La clave `letrado_contraria` quedó con el nombre que tenía cuando la nómina
+ * solo registraba al abogado de enfrente. Hoy el rol es **el letrado de quien
+ * sea** —el de la contraria, el que un codemandado trajo después, la Defensoría
+ * Oficial que asiste a un menor—, y así lo dice su etiqueta; la clave no se
+ * renombra porque está escrita en los almacenes ya guardados y renombrarla
+ * dejaría a esos letrados como "otro".
  */
 export type RolParte =
   | "actor"
@@ -457,6 +465,51 @@ export type RolParte =
   | "letrado_contraria"
   | "mediador"
   | "otro";
+
+/**
+ * **Con qué carácter** interviene esa persona en el juicio.
+ *
+ * El rol dice *qué lugar ocupa* en la causa —actor, demandado, tercero—; el
+ * carácter dice *cómo está parada ahí*, que es otra pregunta y la que cambia el
+ * trámite: un actor por derecho propio y el heredero de ese mismo actor ocupan
+ * el mismo lugar y no se litiga igual con los dos.
+ *
+ * Es un catálogo cerrado y no texto libre por la misma razón que los conceptos
+ * de la contabilidad: cada carácter arrastra una **particularidad procesal**
+ * —a quién hay que notificar además, qué hay que acreditar, quién más
+ * interviene— y eso solo se puede escribir una vez si el valor es uno solo.
+ *
+ * `por_si` es el caso normal y por eso es el valor por defecto: la parte actúa
+ * por derecho propio y no hay nada que advertir. Las fichas no lo muestran,
+ * igual que no muestran los datos vacíos.
+ */
+export type CaracterParte =
+  | "por_si"
+  | "heredero"
+  | "sucesion"
+  | "menor"
+  | "capacidad_restringida"
+  | "defensoria_oficial"
+  | "persona_juridica"
+  | "organismo_estatal"
+  | "citado_coactivo"
+  | "citado_voluntario"
+  | "litisconsorte"
+  | "otro";
+
+/**
+ * Si la parte se presentó en el juicio.
+ *
+ * Es el otro dato que se mira antes de abrir la ficha: con quién hay que
+ * contar. Una demandada que no compareció no recibe traslados en su casilla
+ * —todavía no la constituyó—, y una declarada rebelde cambia el trámite
+ * entero.
+ *
+ * `no_corresponde` no es "no sabemos": es que la pregunta no se le hace a ese
+ * rol. El perito no comparece, lo designa el juzgado; el letrado tampoco, es el
+ * que hace comparecer a su representado.
+ */
+export type Comparecencia = "pendiente" | "comparecio" | "rebelde" | "no_corresponde";
 
 /** Una parte del expediente. */
 export interface Parte {
@@ -490,6 +543,29 @@ export interface Parte {
   notas: string;
   creadoEn: string;
   actualizadoEn: string;
+
+  /*
+   * Campos agregados después de la primera versión del almacén, igual que los
+   * de `Expediente`: son opcionales porque las partes ya guardadas no los
+   * tienen, y quien los lee resuelve el valor faltante (`lib/procesal/partes`).
+   */
+
+  /** Con qué carácter interviene. Si falta, `por_si`. */
+  caracter?: CaracterParte;
+  /** Si se presentó en el juicio. Si falta, lo que corresponda a su rol. */
+  comparecencia?: Comparecencia;
+  /** Fecha de la presentación. Vacía mientras no haya comparecido. */
+  comparecioEl?: string;
+  /**
+   * Fecha en que el letrado **cesó** en la representación: renuncia, revocación
+   * del poder, cambio de abogado. Vacía mientras sigue siendo el letrado
+   * actual, que es lo que la nómina muestra en la tarjeta de su representado.
+   *
+   * El letrado que cesó no se borra: queda en la ficha de la parte como letrado
+   * anterior, porque lo que presentó mientras representaba sigue estando en el
+   * expediente y es a quien hay que buscar para preguntar por eso.
+   */
+  cesoEl?: string;
 }
 
 export const ROLES_PARTE: ReadonlyArray<{
@@ -511,13 +587,150 @@ export const ROLES_PARTE: ReadonlyArray<{
   },
   {
     valor: "letrado_contraria",
-    etiqueta: "Letrado de la contraria",
-    detalle: "El abogado de enfrente. Se vincula a la parte que representa.",
+    etiqueta: "Letrado o apoderado",
+    detalle: "El abogado de una de las partes. Se vincula a la parte que representa.",
   },
   { valor: "perito", etiqueta: "Perito", detalle: "Auxiliar designado por el juzgado." },
   { valor: "mediador", etiqueta: "Mediador", detalle: "Quien condujo la mediación." },
   { valor: "sindico", etiqueta: "Síndico", detalle: "En los procesos concursales." },
   { valor: "otro", etiqueta: "Otro", detalle: "Martillero, depositario, interventor." },
+];
+
+/**
+ * Los caracteres con los que se puede intervenir, con la **particularidad**
+ * que cada uno arrastra.
+ *
+ * `particularidad` es el motivo por el que el catálogo existe: es lo que el
+ * abogado necesita recordar de esa parte y que no está en ningún otro campo
+ * —a quién más hay que notificar, qué hay que acreditar, quién interviene
+ * además—. La ficha de la parte la muestra como aviso cuando el carácter la
+ * tiene; `por_si` no la tiene, porque no hay nada que advertir.
+ *
+ * Los textos están **[a confirmar]** con el abogado (docs/08-roadmap.md): son
+ * el recordatorio corto de un trámite, no la cita de la norma.
+ */
+export const CARACTERES_PARTE: ReadonlyArray<{
+  valor: CaracterParte;
+  etiqueta: string;
+  detalle: string;
+  /** Lo que hay que tener presente de esa parte. Vacío si no hay nada. */
+  particularidad: string;
+}> = [
+  {
+    valor: "por_si",
+    etiqueta: "Por derecho propio",
+    detalle: "El caso normal: la parte actúa por sí misma.",
+    particularidad: "",
+  },
+  {
+    valor: "heredero",
+    etiqueta: "Heredero",
+    detalle: "Continúa la posición de una parte que falleció.",
+    particularidad:
+      "Hay que acreditar la vocación hereditaria —declaratoria de herederos o testamento aprobado— antes de que se lo tenga por parte.",
+  },
+  {
+    valor: "sucesion",
+    etiqueta: "Sucesión indivisa",
+    detalle: "El acervo todavía no partido, no una persona.",
+    particularidad:
+      "Se la emplaza en la persona del administrador de la sucesión; si no hay administrador designado, a todos los herederos.",
+  },
+  {
+    valor: "menor",
+    etiqueta: "Menor de edad",
+    detalle: "Niña, niño o adolescente.",
+    particularidad:
+      "Actúa por sus representantes legales y con intervención del Ministerio Pupilar, que se notifica aparte. Tiene derecho a ser oído y su opinión se pesa según su edad y madurez.",
+  },
+  {
+    valor: "capacidad_restringida",
+    etiqueta: "Capacidad restringida",
+    detalle: "Persona con apoyos o curador designados por sentencia.",
+    particularidad:
+      "Actúa con el apoyo o el curador que fijó la sentencia de restricción, y el Ministerio Público interviene en el juicio.",
+  },
+  {
+    valor: "defensoria_oficial",
+    etiqueta: "Defensoría Oficial",
+    detalle: "Asiste o representa a quien no tiene letrado particular.",
+    particularidad:
+      "Las notificaciones van a la Defensoría y no al domicilio de la parte. Los plazos se cuentan desde que la Defensoría quedó notificada.",
+  },
+  {
+    valor: "persona_juridica",
+    etiqueta: "Persona jurídica",
+    detalle: "Sociedad, asociación, fundación, mutual.",
+    particularidad:
+      "Comparece por su representante legal o apoderado, que tiene que acreditar personería con el estatuto o el poder.",
+  },
+  {
+    valor: "organismo_estatal",
+    etiqueta: "Organismo estatal",
+    detalle: "El Estado nacional, provincial o municipal, o un ente suyo.",
+    particularidad:
+      "Lleva su propia representación letrada —Fiscalía de Estado, apoderado del organismo— y tiene formas de emplazamiento y plazos propios.",
+  },
+  {
+    valor: "citado_coactivo",
+    etiqueta: "Tercero citado coactivamente",
+    detalle: "Lo trajo al pleito una de las partes, no vino por su cuenta.",
+    particularidad:
+      "La sentencia lo alcanza como si fuera parte. Hay que vigilar que el emplazamiento haya quedado bien notificado.",
+  },
+  {
+    valor: "citado_voluntario",
+    etiqueta: "Tercero de intervención voluntaria",
+    detalle: "Se presentó por su propio interés en el resultado.",
+    particularidad: "Toma la causa en el estado en que la encuentra: no se retrotraen etapas.",
+  },
+  {
+    valor: "litisconsorte",
+    etiqueta: "Litisconsorte",
+    detalle: "Uno de varios que ocupan el mismo lado.",
+    particularidad:
+      "Si el litisconsorcio es necesario, los actos del juicio los tienen que alcanzar a todos: no se puede avanzar con uno solo notificado.",
+  },
+  {
+    valor: "otro",
+    etiqueta: "Otro carácter",
+    detalle: "Cualquier otro: cesionario, subrogante, administrador.",
+    particularidad: "",
+  },
+];
+
+/**
+ * Los cuatro estados de la comparecencia, con lo que significa cada uno.
+ *
+ * `rebelde` es el único que no se deduce del expediente: lo declara el juzgado
+ * a pedido de parte, y mientras no haya resolución la demandada que no se
+ * presentó sigue estando `pendiente`.
+ */
+export const COMPARECENCIAS: ReadonlyArray<{
+  valor: Comparecencia;
+  etiqueta: string;
+  detalle: string;
+}> = [
+  {
+    valor: "pendiente",
+    etiqueta: "No compareció",
+    detalle: "Todavía no se presentó en el juicio.",
+  },
+  {
+    valor: "comparecio",
+    etiqueta: "Compareció",
+    detalle: "Se presentó y constituyó domicilio en el expediente.",
+  },
+  {
+    valor: "rebelde",
+    etiqueta: "Declarado rebelde",
+    detalle: "El juzgado lo declaró rebelde: el juicio sigue sin su presencia.",
+  },
+  {
+    valor: "no_corresponde",
+    etiqueta: "No comparece",
+    detalle: "No es algo que se le pregunte a ese rol: el perito, el mediador, el letrado.",
+  },
 ];
 
 /*

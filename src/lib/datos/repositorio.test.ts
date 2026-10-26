@@ -31,6 +31,7 @@ import {
   eliminarParte,
   listarPartes,
   sumarParteDeCaratula,
+  type EntradaParte,
 } from "./partes";
 import {
   actualizarTipoProceso,
@@ -474,7 +475,7 @@ describe("formato de los escritos", () => {
 });
 
 describe("partes del expediente", () => {
-  const PARTE_BASE = {
+  const PARTE_BASE: EntradaParte = {
     expedienteId: "",
     rol: "demandado" as const,
     nombre: "ELECTRONICA DEL NORTE SRL",
@@ -484,6 +485,10 @@ describe("partes del expediente", () => {
     telefono: "381 555 0101",
     email: " Contacto@Estudio.COM ",
     representaA: "",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecencia: "",
+    comparecioEl: "",
     esCliente: false,
     notas: "CONTESTO LA DEMANDA EL LUNES",
   };
@@ -620,6 +625,75 @@ describe("partes del expediente", () => {
     if (!demandada.ok) throw new Error(demandada.error);
     expect(demandada.valor.nombre).toBe("Swiss Medical ART");
     expect(demandada.valor.esCliente).toBe(false);
+  });
+
+  it("guarda el carácter del catálogo y descarta el que no existe", async () => {
+    const expedienteId = await expedientePropio();
+    const menor = await crearParte({ ...PARTE_BASE, expedienteId, caracter: "menor" });
+    if (!menor.ok) throw new Error(menor.error);
+    expect(menor.valor.caracter).toBe("menor");
+
+    const raro = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      // @ts-expect-error: lo que puede llegar de un formulario manipulado.
+      caracter: "lo_que_sea",
+    });
+    if (!raro.ok) throw new Error(raro.error);
+    expect(raro.valor.caracter).toBe("por_si");
+  });
+
+  it("la fecha de comparecencia solo se guarda si hubo comparecencia", async () => {
+    const expedienteId = await expedientePropio();
+    const presentada = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      comparecencia: "comparecio",
+      comparecioEl: "2026-09-12",
+    });
+    if (!presentada.ok) throw new Error(presentada.error);
+    expect(presentada.valor.comparecioEl).toBe("2026-09-12");
+
+    // Una fecha al lado de "no compareció" sería un dato que contradice al de
+    // al lado: se descarta en vez de guardarse.
+    const rebelde = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      comparecencia: "rebelde",
+      comparecioEl: "2026-09-12",
+    });
+    if (!rebelde.ok) throw new Error(rebelde.error);
+    expect(rebelde.valor.comparecioEl).toBe("");
+  });
+
+  it("el cese es del letrado: en quien no representa a nadie no se guarda", async () => {
+    const expedienteId = await expedientePropio();
+    const demandada = await crearParte({ ...PARTE_BASE, expedienteId, cesoEl: "2026-09-10" });
+    if (!demandada.ok) throw new Error(demandada.error);
+    expect(demandada.valor.cesoEl).toBe("");
+
+    const letrado = await crearParte({
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Marta Villagra",
+      rol: "letrado_contraria",
+      representaA: demandada.valor.id,
+      cesoEl: "2026-09-10",
+    });
+    if (!letrado.ok) throw new Error(letrado.error);
+    expect(letrado.valor.cesoEl).toBe("2026-09-10");
+
+    // Y al soltarle el representado, el cese se va con él.
+    const suelto = await actualizarParte(letrado.valor.id, {
+      ...PARTE_BASE,
+      expedienteId,
+      nombre: "Marta Villagra",
+      rol: "letrado_contraria",
+      representaA: "",
+      cesoEl: "2026-09-10",
+    });
+    if (!suelto.ok) throw new Error(suelto.error);
+    expect(suelto.valor.cesoEl).toBe("");
   });
 
   it("no mezcla las partes de dos expedientes", async () => {

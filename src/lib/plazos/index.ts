@@ -11,6 +11,7 @@ export {
   fechaValida,
   formatoCorto,
   formatoFecha,
+  haceCuanto,
   motivoInhabil,
   siguienteHabil,
   sumarDias,

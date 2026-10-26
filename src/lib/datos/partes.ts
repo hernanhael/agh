@@ -1,8 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { nombrePropio, normalizarEspacios, oracion, titulo } from "@/lib/formato";
+import { fechaValida } from "@/lib/plazos";
 import { ahora, leerDatos, modificarDatos } from "./almacen";
 import { correcto, fallo, type Resultado } from "./resultado";
-import { ROLES_PARTE, type Datos, type Parte, type RolParte } from "./tipos";
+import {
+  CARACTERES_PARTE,
+  COMPARECENCIAS,
+  ROLES_PARTE,
+  type CaracterParte,
+  type Comparecencia,
+  type Datos,
+  type Parte,
+  type RolParte,
+} from "./tipos";
 
 /**
  * Nómina de partes del expediente: alta, edición y baja
@@ -24,6 +34,12 @@ export interface EntradaParte {
   email: string;
   /** Id de otra parte del mismo expediente. Vacío si no representa a nadie. */
   representaA: string;
+  /** Fecha en que el letrado cesó en la representación. Vacía si sigue. */
+  cesoEl: string;
+  caracter: CaracterParte;
+  /** Vacío significa "lo que corresponda a su rol", que se resuelve al leer. */
+  comparecencia: Comparecencia | "";
+  comparecioEl: string;
   esCliente: boolean;
   notas: string;
 }
@@ -31,6 +47,27 @@ export interface EntradaParte {
 /** El rol pedido si está en el catálogo; si no, "otro". */
 function rolValido(valor: string): RolParte {
   return ROLES_PARTE.some((rol) => rol.valor === valor) ? (valor as RolParte) : "otro";
+}
+
+/** El carácter pedido si está en el catálogo; si no, el caso normal. */
+function caracterValido(valor: string): CaracterParte {
+  return CARACTERES_PARTE.some((caracter) => caracter.valor === valor)
+    ? (valor as CaracterParte)
+    : "por_si";
+}
+
+/**
+ * La comparecencia pedida si está en el catálogo; si no, vacía.
+ *
+ * Devuelve `undefined` y no un valor por defecto: lo que corresponde a cada rol
+ * lo resuelve `comparecenciaDe` al leer (`lib/procesal/partes`), que es donde
+ * está la regla. Guardar acá un "pendiente" calculado congelaría esa regla en
+ * cada fila y haría que cambiar de rol dejara el dato viejo.
+ */
+function comparecenciaValida(valor: string): Comparecencia | undefined {
+  return COMPARECENCIAS.some((estado) => estado.valor === valor)
+    ? (valor as Comparecencia)
+    : undefined;
 }
 
 /**
@@ -63,6 +100,16 @@ function normalizar(entrada: EntradaParte, acentuar: boolean) {
     email: minusculas(entrada.email),
     esCliente: entrada.esCliente,
     notas: oracion(entrada.notas),
+    caracter: caracterValido(entrada.caracter),
+    comparecencia: comparecenciaValida(entrada.comparecencia),
+    // La fecha de la presentación solo se guarda si hubo presentación: con
+    // "no compareció" cargada, una fecha suelta sería un dato que contradice
+    // al que está al lado.
+    comparecioEl:
+      comparecenciaValida(entrada.comparecencia) === "comparecio"
+        ? fechaValida(entrada.comparecioEl)
+        : "",
+    cesoEl: fechaValida(entrada.cesoEl),
   };
 }
 
@@ -116,11 +163,15 @@ export async function crearParte(entrada: EntradaParte): Promise<Resultado<Parte
     if (!campos.nombre) return fallo<Parte>("Escribí el nombre de la parte.");
 
     const marca = ahora();
+    const representaA = representaValido(datos, expediente.id, entrada.representaA, "");
     const parte: Parte = {
       id: randomUUID(),
       expedienteId: expediente.id,
       ...campos,
-      representaA: representaValido(datos, expediente.id, entrada.representaA, ""),
+      representaA,
+      // Cesar es dejar de representar: en quien no representa a nadie, la
+      // fecha no significa nada y no se guarda.
+      cesoEl: representaA ? campos.cesoEl : "",
       creadoEn: marca,
       actualizadoEn: marca,
     };
@@ -145,8 +196,15 @@ export async function actualizarParte(
     const campos = normalizar(entrada, datos.estudio.correccionDeTildes);
     if (!campos.nombre) return fallo<Parte>("Escribí el nombre de la parte.");
 
+    const representaA = representaValido(
+      datos,
+      parte.expedienteId,
+      entrada.representaA,
+      parte.id,
+    );
     Object.assign(parte, campos, {
-      representaA: representaValido(datos, parte.expedienteId, entrada.representaA, parte.id),
+      representaA,
+      cesoEl: representaA ? campos.cesoEl : "",
       actualizadoEn: ahora(),
     });
     if (parte.esCliente) clienteUnico(datos, parte.expedienteId, parte.id);
@@ -183,6 +241,12 @@ export async function sumarParteDeCaratula(
     telefono: "",
     email: "",
     representaA: "",
+    cesoEl: "",
+    // El carácter y la comparecencia los completa el abogado: la carátula no
+    // los dice, y lo que no se sabe se resuelve al leer y no se inventa acá.
+    caracter: "por_si",
+    comparecencia: "",
+    comparecioEl: "",
     // La carátula dice de qué lado está el estudio, así que si el lado que se
     // suma es el del cliente, la parte nace marcada como tal.
     esCliente: expediente.rolCliente === rol,

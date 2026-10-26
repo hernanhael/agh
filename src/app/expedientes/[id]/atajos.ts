@@ -2,8 +2,9 @@
  * Atajos de teclado del expediente.
  *
  * Las teclas de función de las pestañas viven en `pestanas.ts`, que es su
- * fuente de la verdad. Acá va lo que comparten los atajos de la pestaña de
- * Datos: la nota (`alt+n`) y el formulario del expediente (`alt+e`).
+ * fuente de la verdad. Acá van los atajos de adentro de una pestaña: la nota
+ * (`alt+n`) y el formulario del expediente (`alt+e`) en Datos, y el alta de
+ * una parte (`alt+p`) en Partes.
  *
  * **Los dos van con Alt**, y la razón empieza en la nota: Chrome en Windows se
  * reserva `Ctrl+N` para abrir una ventana nueva y **no le entrega el evento a
@@ -37,6 +38,11 @@
  */
 export const ATAJO_NOTA = "alt+n";
 export const ATAJO_EXPEDIENTE = "alt+e";
+export const ATAJO_PARTE = "alt+p";
+
+/** El código de tecla de cada atajo, que es con lo que se los compara. */
+export const TECLA_EXPEDIENTE = "KeyE";
+export const TECLA_PARTE = "KeyP";
 
 /*
  * No hace falta preguntar si el foco está en un campo de texto, que es lo que
@@ -50,14 +56,13 @@ export const ATAJO_EXPEDIENTE = "alt+e";
  * entonces el foco está en el primer campo.
  */
 
-/** `Alt+N`, y ningún otro modificador apretado. */
-export function esAtajoNota(evento: KeyboardEvent): boolean {
+/** `Alt`+una tecla, y ningún otro modificador apretado. */
+export function esAtajoAlt(evento: KeyboardEvent, codigo: string): boolean {
   if (!evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return false;
-  return evento.code === "KeyN";
+  return evento.code === codigo;
 }
 
-/** `Alt+E`, y ningún otro modificador apretado. */
-export function esAtajoExpediente(evento: KeyboardEvent): boolean {
-  if (!evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return false;
-  return evento.code === "KeyE";
+/** `Alt+N`, el de la nota. */
+export function esAtajoNota(evento: KeyboardEvent): boolean {
+  return esAtajoAlt(evento, "KeyN");
 }

@@ -162,6 +162,30 @@ export function formatoFecha(fecha: FechaISO): string {
 }
 
 /**
+ * Cuánto hace de una fecha, en palabras: "hace 34 días", "hace 7 meses".
+ *
+ * Es lo que vuelve legible una fecha suelta: "21/09/2026" no dice nada por sí
+ * solo y "hace 34 días" sí, que es justo lo que hay que saber del último
+ * movimiento de un expediente o de la comparecencia de una parte. Pasados los
+ * dos meses se cuenta en meses, porque "hace 213 días" obliga a dividir
+ * mentalmente.
+ *
+ * Devuelve `undefined` para una fecha futura: no es un dato, es un error de
+ * tipeo, y no se gana nada escribiéndole una leyenda al lado.
+ */
+export function haceCuanto(fecha: FechaISO, diaDeHoy: FechaISO): string | undefined {
+  const dias = diasEntre(fecha, diaDeHoy);
+  if (dias < 0) return undefined;
+  if (dias === 0) return "hoy";
+  if (dias === 1) return "ayer";
+  if (dias < 60) return `hace ${dias} días`;
+  const meses = Math.round(dias / 30.44);
+  if (meses < 24) return `hace ${meses} meses`;
+  const anios = Math.floor(meses / 12);
+  return anios === 1 ? "hace un año" : `hace ${anios} años`;
+}
+
+/**
  * La fecha en 'YYYY-MM-DD' si está bien escrita y existe; si no, cadena vacía.
  *
  * Lo usan los repositorios para no guardar una fecha a medias: una fecha mal

@@ -377,20 +377,49 @@ Dentro de la pestaña **Datos** hay dos atajos más, con la misma regla: aparece
 |---|---|---|
 | `alt+n` | La nota, en edición | `Escape`, clic afuera |
 | `alt+e` | El formulario del expediente | `Escape` |
+| `alt+p` | El alta de una parte, en Partes | `Escape` |
 
-Los dos van con `Alt` y no con `Ctrl` por una razón del navegador: **Chrome en Windows se reserva `Ctrl+N`** para abrir una ventana nueva y no le entrega el evento a la página, así que no hay forma de tomarlo. Con la nota forzada a `Alt`, el expediente lo acompaña: dos atajos de la misma pantalla con modificadores distintos se recuerdan peor que dos iguales. Queda una reserva sobre `alt+e`, que en Chrome abre el menú de tres puntos; el evento sí llega a la página y se cancela, pero si algún navegador no cediera el atajo, la letra se cambia en un solo lugar (`src/app/expedientes/[id]/atajos.ts`) y las pantallas no se tocan.
+Los tres van con `Alt` y no con `Ctrl` por una razón del navegador: **Chrome en Windows se reserva `Ctrl+N`** para abrir una ventana nueva y no le entrega el evento a la página, así que no hay forma de tomarlo. Con la nota forzada a `Alt`, el expediente lo acompaña: dos atajos de la misma pantalla con modificadores distintos se recuerdan peor que dos iguales. Queda una reserva sobre `alt+e`, que en Chrome abre el menú de tres puntos; el evento sí llega a la página y se cancela, pero si algún navegador no cediera el atajo, la letra se cambia en un solo lugar (`src/app/expedientes/[id]/atajos.ts`) y las pantallas no se tocan.
 
 El mismo atajo abre y cierra, así no hay que acordarse de dos. Y `Escape` adentro del editor de la nota es **de la nota**: sin esa salvedad, una nota abierta encima del formulario abierto cerraría las dos cosas con una sola tecla.
 
+Los dos desplegables con atajo —el del expediente y el del alta de una parte— son **el mismo componente con otra tecla** (`Desplegable`), y la tecla viaja como el código físico de `KeyboardEvent.code`, que es lo que puede cruzar la frontera servidor/cliente. Lo de adentro de cada uno se sigue renderizando en el servidor y entra como contenido.
+
 ### 2.14 Las partes del expediente
 
-**Hecho.** La pestaña **Partes** contesta quiénes litigan, cómo se los notifica y quién es exactamente el cliente. Es la nómina de `case_parties` (`06-modelo-de-datos.md`), con nueve roles: actor, demandado, citado en garantía, tercero, letrado de la contraria, perito, mediador, síndico y otro.
+**Hecho.** La pestaña **Partes** contesta quiénes litigan, cómo se los notifica, con qué carácter intervienen y quién es exactamente el cliente. Es la nómina de `case_parties` (`06-modelo-de-datos.md`), con nueve roles: actor, demandado, citado en garantía, tercero, letrado o apoderado, perito, mediador, síndico y otro.
+
+**La nómina es un tablero de tarjetas y no una lista**, porque no se la lee de arriba abajo: se la barre con la vista buscando a alguien. Una tarjeta por persona, repartidas a lo ancho y a lo alto, y **tres señales en el frente que contestan sin abrir nada**: si compareció, si tiene domicilio digital y quién es su abogado hoy. Lo demás —documento, domicilios, teléfono, notas, los letrados y el formulario— está adentro de la tarjeta, que se abre en su lugar y no manda a otra pantalla.
+
+**El distintivo visual de cada tarjeta es el ícono de su rol**: la balanza del actor, el escudo del demandado, el paraguas de la citada en garantía, el microscopio del perito, el apretón de manos del mediador. Se reconoce de qué se trata la tarjeta sin leerla; el rótulo debajo lo dice igual con todas las letras, para quien no lo tenga aprendido y para el lector de pantalla.
+
+**El filete del borde izquierdo dice de qué lado está esa persona, y la referencia es el cliente**: el azul del acento para el cliente, el mismo azul apagado para los suyos, la línea fuerte para los de enfrente y la línea fina para los auxiliares. Es la pregunta que uno se hace sobre una nómina ajena —quién es de los míos— y contestarla con el borde deja el cuerpo de la tarjeta para los datos. El azul se usa acá y no en la ficha de Datos porque **la tarjeta sí se toca**: se abre con un clic, y el teñido del hover es el del resto de la aplicación. Lo que no lleva color es el relleno, justamente para que el hover siga queriendo decir algo.
 
 **Se lee por lados, no por roles.** Una lista plana de nueve roles no se lee: el abogado piensa el juicio en lados —acá los míos, enfrente los otros, alrededor los auxiliares del juzgado—. La nómina se agrupa en **parte actora**, **parte demandada** (con su citada en garantía, que litiga junto al demandado aunque no haya sido demandada) y **terceros y auxiliares**. El tercero va con los auxiliares y no con un lado porque hasta que no se resuelve cómo interviene no se sabe de qué lado está.
 
-**Los letrados cuelgan de su representado.** Un letrado de la contraria no es una fila suelta de la nómina: es *el abogado de esa parte*, y así se lo encuentra cuando hay que llamarlo. Se lo vincula con "representa a" y se muestra sangrado debajo de su representada. No se admiten cadenas de dos saltos —un letrado de un letrado—, y si el representado se borra, el letrado no desaparece: queda como una fila más, para que no se pierda de vista.
+**La pantalla se parte en dos áreas**: a la izquierda el pleito —la parte actora y la demandada con su citada en garantía—, a la derecha lo que lo rodea —los terceros y los auxiliares del juzgado—. Es el reparto que el juicio tiene en la cabeza: enfrente hay una contraria y alrededor hay gente que interviene sin litigar, y mezclarlas en una sola columna obligaba a leer el rol de cada fila para saber cuál era cuál. Adentro de cada área el **lado** encabeza su grupo: dos cortes distintos sobre la misma nómina, el área contesta "¿esto es el juicio o lo que lo rodea?" y el lado "¿con quién o contra quién?".
+
+
+
+**El cliente encabeza su lado.** Dentro de cada lado el orden es el del catálogo de roles y después alfabético, salvo el cliente, que va primero: en un litisconsorcio de tres actores, dejarlo donde caiga por orden alfabético obliga a leer los tres nombres para encontrar al propio.
+
+**Los letrados no tienen tarjeta propia.** Un letrado no es una fila suelta de la nómina: es *el abogado de esa parte*, y así se lo encuentra cuando hay que llamarlo. Se lo vincula con "representa a", su nombre aparece en el frente de la tarjeta de su representado y la ficha de esa parte los lista a todos. No se admiten cadenas de dos saltos —un letrado de un letrado—, y si el representado se borra, el letrado no desaparece: pasa a tener tarjeta propia en los auxiliares, para que no se pierda de vista.
+
+**El carácter es otra pregunta que el rol.** El rol dice *qué lugar ocupa* en la causa —actor, demandado, tercero—; el carácter dice *cómo está parado ahí*, y es lo que cambia el trámite: un actor por derecho propio y el heredero de ese mismo actor ocupan el mismo lugar y no se litiga igual con los dos. Es un catálogo cerrado y no texto libre, por la misma razón que los conceptos de la contabilidad (§2.12): cada carácter arrastra una **particularidad procesal** que solo se puede escribir una vez si el valor es uno solo.
+
+Los caracteres previstos son: por derecho propio —el caso normal, que no se muestra—, heredero, sucesión indivisa, menor de edad, capacidad restringida, Defensoría Oficial, persona jurídica, organismo estatal, tercero citado coactivamente, tercero de intervención voluntaria, litisconsorte y otro. Las denominaciones y sus particularidades están **[a confirmar]** con el abogado.
+
+**La particularidad se muestra adentro de la tarjeta, con el papel y el borde punteado de "próximo en esta pestaña"**, que es el recurso con el que la aplicación dice "esto no es un dato". Y es la diferencia: el documento y el domicilio se leen para copiarlos a un escrito; la particularidad se lee para acordarse de un trámite —que al menor de edad lo asiste el Ministerio Pupilar y tiene derecho a ser oído, que al heredero hay que acreditarle la vocación hereditaria, que a la Defensoría Oficial se la notifica en lugar de a la parte—.
+
+**La comparecencia dice con quién hay que contar.** Una demandada que no se presentó no recibe traslados en su casilla por más que la casilla esté cargada, y una declarada rebelde cambia cómo se notifica de ahí en más. Son cuatro estados: no compareció, compareció —con su fecha—, declarado rebelde y "no comparece". El último no es "no sabemos": es que la pregunta no se le hace a ese rol, porque al perito lo designa el juzgado y el letrado es el que hace comparecer a su representado.
+
+Lo que no se cargó **se resuelve al leer y no se guarda calculado**: el actor arranca en "compareció" porque presentar la demanda es su comparecencia, y el resto arranca en "no compareció", que es el lado seguro del error —muestra un trámite por hacer que tal vez ya esté hecho, en lugar de dar por presentada a una demandada a la que todavía hay que emplazar—. En la tarjeta, la **rebeldía va en ámbar y el "todavía no se presentó" en gris**, y no al revés: que una demandada recién emplazada no haya comparecido es lo normal del trámite, y el ámbar se gasta si se lo pone en lo que todavía no pasó.
+
+**El abogado actual está en el frente de la tarjeta de su representado.** El letrado puede **cesar** —renuncia, revocación del poder, cambio de abogado— y entonces baja a "letrados anteriores" dentro de la ficha, pero **no se borra**: lo que presentó mientras representaba sigue en el expediente, y cuando hay que preguntar por eso hay que saber a quién llamar. Por eso el cese es una fecha y no una baja. En la tarjeta del cliente, mientras no haya un letrado cargado, el abogado es **el estudio**: es el único caso en que la nómina sabe la respuesta sin que nadie la escriba.
 
 **La carátula es el arranque de la nómina, no una copia de ella.** El actor y el demandado ya están escritos en la carátula, así que la pestaña no los vuelve a pedir: mientras un lado no tenga su parte cargada, ofrece **sumarlo con un clic** y el abogado completa después el documento y los domicilios, que es cuando llegan. La comparación es por nombre normalizado —sin tildes ni mayúsculas, igual que el buscador del listado—, así que "Swiss Medical ART" cargada a mano no vuelve a ofrecerse.
+
+El alta se abre con **`alt+p`**, el mismo desplegable con atajo que el formulario del expediente en Datos con `alt+e` (§2.13).
 
 **El dato que se viene a buscar es el domicilio electrónico.** Sin la casilla del SAE no se notifica, así que es el único dato que, cuando falta, se muestra en lugar de omitirse. Y solo en quienes se notifica: al perito lo notifica el juzgado por su canal y la mediadora ya terminó su intervención, así que reclamarles la casilla sería un aviso que el abogado no puede ni necesita resolver.
 
@@ -403,6 +432,8 @@ Pendiente:
 - **Agenda de contactos del estudio** (`contacts`), que es lo que termina con la carga repetida, y el vínculo del cliente con sus otros expedientes.
 - **Encabezado de escrito** armado con esta nómina: carátula, partes, documentos y domicilios constituidos, sin volver a tipearlos (§2.5).
 - Cédulas y notificaciones a los domicilios electrónicos cargados.
+- **La comparecencia y el cese del letrado escritos por la historia** (§2.3): hoy los dos se cargan a mano, aunque la presentación de la contraria y la renuncia al patrocinio ya son entradas del expediente.
+- Caracteres a confirmar con el abogado, y los que falten: cesionario, subrogante, concursado.
 - Aseguradoras con su póliza y su cobertura; peritos con su especialidad y su matrícula.
 
 ## 3. Funcionalidad
@@ -412,7 +443,7 @@ Pendiente:
 - [x] Alta, edición y baja de expedientes, eligiendo el tipo de proceso en el alta.
 - [x] Carátula normalizada, con sus componentes guardados por separado (`10-normalizacion-de-texto.md`).
 - [ ] Baja lógica y archivo de expedientes (hoy la baja es definitiva).
-- [x] Nómina de partes con sus roles, documentos y domicilios, agrupada por lado, con los letrados colgando de su representado y el arranque desde la carátula (§2.14).
+- [x] Nómina de partes en tarjetas, repartida en el pleito y lo que lo rodea, con el rol, el carácter con el que intervienen, la comparecencia, el domicilio digital y el abogado actual en el frente, los letrados colgando de su representado y el arranque desde la carátula (§2.14).
 - [ ] Ficha completa: montos, fechas clave, etiquetas.
 - [x] Tipos de proceso configurables (crear, editar, desactivar, borrar) con ejemplos iniciales para ordinario, sumarísimo, sumario, ejecutivo, monitorio, expropiación, sucesorio y desalojo.
 - [ ] Etapas con historial de transiciones y advertencia en transiciones no previstas (hoy se guarda la etapa actual y desde cuándo).

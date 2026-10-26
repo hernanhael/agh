@@ -13,12 +13,12 @@ import {
   obtenerEstudio,
 } from "@/lib/datos";
 import { tipoProcesoBreve } from "@/lib/formato";
-import { diasEntre, formatoFecha } from "@/lib/plazos";
+import { formatoFecha, haceCuanto } from "@/lib/plazos";
 import { borrarExpediente, guardarExpediente } from "../../acciones";
 import { FormularioExpediente } from "../../FormularioExpediente";
-import { ATAJO_EXPEDIENTE, ATAJO_NOTA } from "../atajos";
+import { ATAJO_EXPEDIENTE, ATAJO_NOTA, TECLA_EXPEDIENTE } from "../atajos";
+import { Desplegable } from "../Desplegable";
 import { NotaExpediente } from "../NotaExpediente";
-import { EditarExpediente } from "./EditarExpediente";
 import { cargarExpediente, cargarTipoProceso } from "../cargar";
 
 /**
@@ -199,29 +199,6 @@ function SinCargar({ children }: { children: string }) {
 /** Las marcas de tiempo del almacén son ISO completas: alcanza el día. */
 function dia(marca: string): string {
   return formatoFecha(marca.slice(0, 10));
-}
-
-/**
- * Cuánto hace de una fecha, en palabras.
- *
- * Es lo que vuelve legible una fecha suelta: "21/09/2026" no dice nada por sí
- * solo y "hace 34 días" sí, que es justo lo que hay que saber del último
- * movimiento. Pasados los dos meses se cuenta en meses, porque "hace 213 días"
- * obliga a dividir mentalmente.
- *
- * Devuelve `undefined` para una fecha futura: no es un dato, es un error de
- * tipeo, y no se gana nada escribiéndole una leyenda al lado.
- */
-function haceCuanto(fecha: string, diaDeHoy: string): string | undefined {
-  const dias = diasEntre(fecha, diaDeHoy);
-  if (dias < 0) return undefined;
-  if (dias === 0) return "hoy";
-  if (dias === 1) return "ayer";
-  if (dias < 60) return `hace ${dias} días`;
-  const meses = Math.round(dias / 30.44);
-  if (meses < 24) return `hace ${meses} meses`;
-  const anios = Math.floor(meses / 12);
-  return anios === 1 ? "hace un año" : `hace ${anios} años`;
 }
 
 export default async function DatosExpedientePage({
@@ -432,11 +409,12 @@ export default async function DatosExpedientePage({
       />
 
       {/*
-        `EditarExpediente` es un `<details>` con el atajo `Ctrl+E` enganchado.
-        Lo de adentro —el formulario y el botón de borrar— se sigue
-        renderizando en el servidor y entra como `children`.
+        `Desplegable` es un `<details>` con un atajo de teclado enganchado, el
+        mismo que usa "Agregar parte" en la nómina. Lo de adentro —el
+        formulario y el botón de borrar— se sigue renderizando en el servidor
+        y entra como `children`.
       */}
-      <EditarExpediente className={claseSeparador}>
+      <Desplegable codigo={TECLA_EXPEDIENTE} className={claseSeparador}>
         {/*
           El `group` va en el `<summary>` y no en el `<details>`: con el
           desplegable abierto, el mouse está la mayor parte del tiempo sobre el
@@ -479,7 +457,7 @@ export default async function DatosExpedientePage({
           </form>
           <Marca tono="aviso">No se puede deshacer</Marca>
         </div>
-      </EditarExpediente>
+      </Desplegable>
     </>
   );
 }

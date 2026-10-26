@@ -1,0 +1,550 @@
+import type { ReactNode } from "react";
+import {
+  Briefcase,
+  ChevronDown,
+  CircleUserRound,
+  Handshake,
+  Inbox,
+  Info,
+  Landmark,
+  MailCheck,
+  Microscope,
+  Scale,
+  Shield,
+  Trash2,
+  Umbrella,
+  UserCheck,
+  Users,
+  UserX,
+  type LucideIcon,
+} from "lucide-react";
+import { Dato } from "@/components/ui";
+import {
+  CARACTERES_PARTE,
+  COMPARECENCIAS,
+  etiquetaDe,
+  ROLES_PARTE,
+  type Parte,
+  type RolParte,
+} from "@/lib/datos/tipos";
+import {
+  caracterDe,
+  comparece,
+  comparecenciaDe,
+  letradosDe,
+  particularidadDe,
+  seNotifica,
+  type ParteConRepresentantes,
+} from "@/lib/procesal";
+import { formatoFecha, haceCuanto } from "@/lib/plazos";
+import { borrarParte } from "../../acciones";
+import { FormularioParte } from "./FormularioParte";
+
+/**
+ * La **tarjeta de una parte** (docs/02-expedientes.md §2.14).
+ *
+ * Cerrada contesta las tres preguntas que se hacen recorriendo una nómina con
+ * la vista —**si compareció, si se la puede notificar y quién es su abogado
+ * hoy**—, y abierta es la ficha completa de esa persona, con sus letrados y su
+ * formulario. Las dos cosas en el mismo lugar: la tarjeta se abre donde está,
+ * sin salir a otra pantalla y sin perder de vista el resto de la nómina.
+ *
+ *   ┌╴⚖  Nicolás Rogel                        cliente  ⌄ ┐
+ *   │   ACTOR · heredero                                 │
+ *   │   ✔ Compareció   ✉ Domicilio digital   💼 Estudio  │
+ *   └────────────────────────────────────────────────────┘
+ *
+ * **El distintivo visual de cada tarjeta es el ícono de su rol**: la balanza
+ * del actor, el escudo del demandado, el paraguas de la citada en garantía, el
+ * microscopio del perito. Se reconoce de qué se trata la tarjeta sin leerla,
+ * que es lo que una nómina repartida en dos columnas necesita; el rótulo
+ * debajo lo dice con todas las letras para quien no lo tenga aprendido y para
+ * el lector de pantalla.
+ *
+ * **El filete del borde izquierdo dice de qué lado está esa persona**, y la
+ * referencia es el cliente y no la carátula: el azul del acento para el
+ * cliente, el mismo azul apagado para los suyos, la línea fuerte para los de
+ * enfrente y la línea fina para los auxiliares. Es la pregunta que el abogado
+ * se hace sobre una nómina ajena —quién es de los míos—, y contestarla con el
+ * borde deja el cuerpo de la tarjeta para los datos.
+ *
+ * El azul se usa acá y no en la ficha de Datos porque **la tarjeta sí se
+ * toca**: se abre con un clic, y el teñido del hover es el del resto de la
+ * aplicación. Lo que no lleva color es el relleno, justamente para que el
+ * hover siga queriendo decir algo.
+ */
+
+/**
+ * El ícono de cada rol, que es el distintivo de la tarjeta.
+ *
+ * La balanza es de quien lleva el reclamo, el escudo de quien se defiende, el
+ * paraguas de la cobertura que la aseguradora trae al pleito, el apretón de
+ * manos del mediador y el microscopio del perito. El maletín es del letrado, y
+ * vuelve a aparecer en la señal del abogado actual de cada parte: es el mismo
+ * significado en los dos lugares.
+ */
+const ICONO_ROL: Record<RolParte, LucideIcon> = {
+  actor: Scale,
+  demandado: Shield,
+  citado_garantia: Umbrella,
+  tercero: Users,
+  letrado_contraria: Briefcase,
+  perito: Microscope,
+  mediador: Handshake,
+  sindico: Landmark,
+  otro: CircleUserRound,
+};
+
+/**
+ * De qué lado está la tarjeta respecto del cliente, que es lo que pinta el
+ * filete del borde izquierdo.
+ */
+export type Costado = "cliente" | "propio" | "contrario" | "auxiliar";
+
+const FILETE: Record<Costado, string> = {
+  cliente: "border-l-acento",
+  propio: "border-l-acento/40",
+  contrario: "border-l-linea-fuerte",
+  auxiliar: "border-l-linea",
+};
+
+/**
+ * Una **señal** del frente de la tarjeta: ícono y dos palabras.
+ *
+ * Es la misma regla que el semáforo del registro (`components/Registro.tsx`):
+ * *el color avisa, el hover explica*. La señal dice "Compareció"; el cuándo, la
+ * casilla entera o los otros letrados están en el `title` y en la ficha, que es
+ * donde se los va a buscar cuando hacen falta.
+ *
+ * El `detalle` también va oculto para el lector de pantalla, que no tiene
+ * hover: lo que la señal abrevia no puede quedar solo en el gesto del mouse.
+ */
+function Senal({
+  Icono,
+  children,
+  detalle,
+  tono = "neutro",
+}: {
+  Icono: LucideIcon;
+  children: ReactNode;
+  detalle?: string;
+  tono?: "neutro" | "ok" | "aviso";
+}) {
+  const tonos = {
+    neutro: "text-zinc-500 dark:text-zinc-400",
+    ok: "text-emerald-700 dark:text-emerald-500",
+    aviso: "text-amber-700 dark:text-amber-500",
+  } as const;
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1 ${tonos[tono]}`} title={detalle}>
+      <Icono aria-hidden className="size-3.5 shrink-0" />
+      <span className="truncate">{children}</span>
+      {detalle ? <span className="sr-only"> — {detalle}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * Si compareció. Es la primera de las tres señales porque es la que dice con
+ * quién hay que contar: una demandada que no se presentó no recibe traslados
+ * en su casilla, por más que la casilla esté cargada.
+ *
+ * A quien no comparece —el perito, el mediador, el letrado— no se le muestra
+ * nada: un "no compareció" que no significa nada malo es la clase de aviso que
+ * entrena a no mirar los avisos.
+ */
+function SenalComparecencia({ parte, diaDeHoy }: { parte: Parte; diaDeHoy: string }) {
+  const estado = comparecenciaDe(parte);
+  if (estado === "no_corresponde") return null;
+
+  const detalle = COMPARECENCIAS.find((item) => item.valor === estado)?.detalle ?? "";
+
+  if (estado === "comparecio") {
+    const desde = parte.comparecioEl ? haceCuanto(parte.comparecioEl, diaDeHoy) : undefined;
+    const cuando = parte.comparecioEl
+      ? `Se presentó el ${formatoFecha(parte.comparecioEl)}${desde ? `, ${desde}` : ""}.`
+      : detalle;
+    return (
+      <Senal Icono={UserCheck} tono="ok" detalle={cuando}>
+        Compareció
+      </Senal>
+    );
+  }
+
+  /*
+   * La rebeldía va en ámbar y el "todavía no se presentó" en gris, y no al
+   * revés: que una demandada recién emplazada no haya comparecido es lo normal
+   * del trámite, mientras que una rebeldía declarada cambia cómo se notifica de
+   * ahí en más. El ámbar se gasta si se lo pone en lo que todavía no pasó.
+   */
+  return (
+    <Senal Icono={UserX} tono={estado === "rebelde" ? "aviso" : "neutro"} detalle={detalle}>
+      {estado === "rebelde" ? "Rebelde" : "No compareció"}
+    </Senal>
+  );
+}
+
+/**
+ * Si tiene domicilio digital. Es **el dato operativo de la nómina**: sin la
+ * casilla del SAE no se notifica, así que es el único que la pestaña reclama
+ * cuando falta, y solo en quienes se notifica (§2.14).
+ */
+function SenalDomicilio({ parte }: { parte: Parte }) {
+  if (parte.domicilioElectronico) {
+    return (
+      <Senal Icono={MailCheck} detalle={`Casilla del SAE ${parte.domicilioElectronico}.`}>
+        Domicilio digital
+      </Senal>
+    );
+  }
+  if (!seNotifica(parte.rol)) return null;
+  return (
+    <Senal Icono={Inbox} tono="aviso" detalle="Sin la casilla del SAE no se la puede notificar.">
+      Sin domicilio digital
+    </Senal>
+  );
+}
+
+/**
+ * Quién es su abogado hoy.
+ *
+ * Para el cliente del estudio, el abogado es el estudio mismo mientras no haya
+ * un letrado cargado: es el único caso en que la nómina sabe la respuesta sin
+ * que nadie la escriba, y dejarlo en "sin letrado" sería decir algo falso en la
+ * única tarjeta sobre la que no hay ninguna duda.
+ */
+function SenalLetrado({
+  parte,
+  actuales,
+  estudio,
+}: {
+  parte: Parte;
+  actuales: ReadonlyArray<Parte>;
+  estudio: string;
+}) {
+  /*
+    A quien no litiga no se le pregunta quién lo patrocina: el perito y la
+    mediadora no llevan letrado, y un letrado no tiene letrado propio. Es la
+    misma regla que la comparecencia (`comparece`, en `lib/procesal/partes`) y
+    por el mismo motivo: un "sin letrado" que no significa nada malo es la
+    clase de aviso que entrena a no mirar los avisos.
+  */
+  if (actuales.length === 0 && !parte.esCliente && !comparece(parte.rol)) return null;
+
+  if (actuales.length > 0) {
+    const nombres = actuales.map((letrado) => letrado.nombre);
+    return (
+      <Senal Icono={Briefcase} detalle={`Letrado: ${nombres.join(", ")}.`}>
+        {nombres[0]}
+        {nombres.length > 1 ? ` +${nombres.length - 1}` : ""}
+      </Senal>
+    );
+  }
+
+  if (parte.esCliente) {
+    return (
+      <Senal Icono={Briefcase} detalle={`${estudio} lleva este expediente.`}>
+        El estudio
+      </Senal>
+    );
+  }
+
+  return (
+    <Senal Icono={Briefcase} detalle="No hay letrado cargado para esta parte.">
+      Sin letrado
+    </Senal>
+  );
+}
+
+/** El carácter, al lado del rol, cuando no es el caso normal. */
+function ChipCaracter({ parte }: { parte: Parte }) {
+  const caracter = caracterDe(parte);
+  if (caracter === "por_si") return null;
+  return (
+    <span className="rotulo text-zinc-500 dark:text-zinc-500">
+      {" · "}
+      {etiquetaDe(CARACTERES_PARTE, caracter)}
+    </span>
+  );
+}
+
+/**
+ * Lo que hay que tener presente por el carácter con el que interviene.
+ *
+ * Va con el papel y el borde punteado de "Próximo en esta pestaña"
+ * (`Pendientes`), que es el recurso con el que la aplicación dice "esto no es
+ * un dato". El carácter es lo único de la ficha que no se lee para copiarlo a
+ * un escrito sino para acordarse de un trámite.
+ */
+function Particularidad({ parte }: { parte: Parte }) {
+  const texto = particularidadDe(parte);
+  if (!texto) return null;
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-md border border-dashed border-linea-fuerte bg-background px-3 py-2">
+      <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-zinc-500 dark:text-zinc-500" />
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+        <span className="font-medium text-zinc-900 dark:text-zinc-50">
+          {etiquetaDe(CARACTERES_PARTE, caracterDe(parte))}.
+        </span>{" "}
+        {texto}
+      </p>
+    </div>
+  );
+}
+
+/** El botón de quitar de la nómina, igual para una parte y para su letrado. */
+function BotonQuitar({ parte, expedienteId }: { parte: Parte; expedienteId: string }) {
+  return (
+    <form action={borrarParte}>
+      <input type="hidden" name="id" value={parte.id} />
+      <input type="hidden" name="expedienteId" value={expedienteId} />
+      <button
+        type="submit"
+        title={`Quitar a "${parte.nombre}" de la nómina`}
+        className="rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acento dark:hover:bg-red-950 dark:hover:text-red-400"
+      >
+        <Trash2 aria-hidden className="size-3.5" />
+        <span className="sr-only">Quitar de la nómina</span>
+      </button>
+    </form>
+  );
+}
+
+/** El desplegable de edición, igual para una parte y para su letrado. */
+function Editar({
+  parte,
+  expedienteId,
+  representables,
+}: {
+  parte: Parte;
+  expedienteId: string;
+  representables: ReadonlyArray<Parte>;
+}) {
+  return (
+    <details className="min-w-0 flex-1">
+      <summary className="cursor-pointer list-none text-xs text-zinc-500 underline decoration-dotted underline-offset-2 dark:text-zinc-500">
+        Editar
+      </summary>
+      <div className="mb-2 border-t border-linea">
+        <FormularioParte
+          expedienteId={expedienteId}
+          parte={parte}
+          representables={representables.filter((candidata) => candidata.id !== parte.id)}
+        />
+      </div>
+    </details>
+  );
+}
+
+/**
+ * Un letrado dentro de la ficha de su representado.
+ *
+ * No es una tarjeta propia: el letrado se encuentra *por la parte que lleva*,
+ * así que vive adentro de ella, en una línea con su casilla y su teléfono, que
+ * es lo que se busca cuando hay que llamarlo.
+ */
+function FilaLetrado({
+  letrado,
+  expedienteId,
+  representables,
+}: {
+  letrado: Parte;
+  expedienteId: string;
+  representables: ReadonlyArray<Parte>;
+}) {
+  return (
+    <li
+      id={`parte-${letrado.id}`}
+      className="border-t border-linea pt-2 first:border-t-0 first:pt-0"
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+          {letrado.nombre}
+        </span>
+        <ChipCaracter parte={letrado} />
+        {letrado.cesoEl ? (
+          <span className="text-xs text-zinc-500 dark:text-zinc-500">
+            cesó el <span className="tabular-nums">{formatoFecha(letrado.cesoEl)}</span>
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+        {letrado.domicilioElectronico ? (
+          <span>
+            <span className="text-zinc-400 dark:text-zinc-600">Casilla </span>
+            {letrado.domicilioElectronico}
+          </span>
+        ) : null}
+        {letrado.telefono ? (
+          <span>
+            <span className="text-zinc-400 dark:text-zinc-600">Tel. </span>
+            {letrado.telefono}
+          </span>
+        ) : null}
+        {letrado.email ? (
+          <span>
+            <span className="text-zinc-400 dark:text-zinc-600">Correo </span>
+            {letrado.email}
+          </span>
+        ) : null}
+      </p>
+      {letrado.notas ? (
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">{letrado.notas}</p>
+      ) : null}
+      <div className="mt-1.5 flex items-start gap-3">
+        <Editar parte={letrado} expedienteId={expedienteId} representables={representables} />
+        <BotonQuitar parte={letrado} expedienteId={expedienteId} />
+      </div>
+    </li>
+  );
+}
+
+/** Los letrados de la parte: los de hoy en un bloque, los que cesaron en otro. */
+function Letrados({
+  titulo,
+  letrados,
+  expedienteId,
+  representables,
+}: {
+  titulo: string;
+  letrados: ReadonlyArray<Parte>;
+  expedienteId: string;
+  representables: ReadonlyArray<Parte>;
+}) {
+  if (letrados.length === 0) return null;
+  return (
+    <section className="mt-3 border-t border-linea pt-3">
+      <h4 className="rotulo text-zinc-500 dark:text-zinc-500">{titulo}</h4>
+      <ul className="mt-1.5 space-y-2">
+        {letrados.map((letrado) => (
+          <FilaLetrado
+            key={letrado.id}
+            letrado={letrado}
+            expedienteId={expedienteId}
+            representables={representables}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function TarjetaParte({
+  fila,
+  expedienteId,
+  representables,
+  costado,
+  estudio,
+  diaDeHoy,
+}: {
+  fila: ParteConRepresentantes;
+  expedienteId: string;
+  /** Las partes que pueden ser representadas, para el desplegable del form. */
+  representables: ReadonlyArray<Parte>;
+  costado: Costado;
+  /** Nombre del estudio: es el abogado del cliente mientras no haya otro. */
+  estudio: string;
+  diaDeHoy: string;
+}) {
+  const { parte, representantes } = fila;
+  const Icono = ICONO_ROL[parte.rol] ?? CircleUserRound;
+  const { actuales, anteriores } = letradosDe(representantes);
+
+  return (
+    <li id={`parte-${parte.id}`}>
+      {/*
+        La tarjeta entera es el `<summary>`: se abre haciendo clic en cualquier
+        parte de ella y no en un "ver más" al pie. Sin JavaScript de cliente,
+        que es como funciona el resto de la aplicación.
+      */}
+      <details className="group/ficha overflow-hidden rounded-lg border border-l-2 border-linea bg-superficie transition-colors hover:border-linea-fuerte open:border-linea-fuerte">
+        <summary
+          className={`cursor-pointer list-none p-3 transition-colors hover:bg-acento-suave group-open/ficha:bg-background ${FILETE[costado]}`}
+        >
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-zinc-500 group-open/ficha:bg-superficie dark:text-zinc-400">
+              <Icono aria-hidden className="size-4" />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2">
+                <span className="min-w-0 flex-1 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                  {parte.nombre}
+                </span>
+                {parte.esCliente ? (
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-acento/40 px-2 py-0.5 text-xs text-acento">
+                    cliente
+                  </span>
+                ) : null}
+                <ChevronDown
+                  aria-hidden
+                  className="mt-1 size-3.5 shrink-0 text-zinc-400 transition-transform duration-150 group-open/ficha:rotate-180 dark:text-zinc-600"
+                />
+              </div>
+
+              <p className="mt-0.5">
+                <span className="rotulo text-zinc-500 dark:text-zinc-500">
+                  {etiquetaDe(ROLES_PARTE, parte.rol)}
+                </span>
+                <ChipCaracter parte={parte} />
+              </p>
+
+              {/*
+                Las tres señales, en una línea que se parte sola cuando la
+                columna es angosta. Lo que no aplica no deja hueco: una tarjeta
+                de perito muestra una sola señal y no tres, de las cuales dos
+                dirían "no corresponde".
+              */}
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <SenalComparecencia parte={parte} diaDeHoy={diaDeHoy} />
+                <SenalDomicilio parte={parte} />
+                <SenalLetrado parte={parte} actuales={actuales} estudio={estudio} />
+              </p>
+            </div>
+          </div>
+        </summary>
+
+        <div className="border-t border-linea px-3 pb-3">
+          <Particularidad parte={parte} />
+
+          <dl className="mt-3 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
+            <Dato rotulo="DNI o CUIT">{parte.documento}</Dato>
+            <Dato rotulo="Domicilio electrónico">{parte.domicilioElectronico}</Dato>
+            <Dato rotulo="Teléfono">{parte.telefono}</Dato>
+            <Dato rotulo="Correo electrónico">{parte.email}</Dato>
+            <Dato rotulo="Domicilio real" className="sm:col-span-2">
+              {parte.domicilioReal}
+            </Dato>
+            {comparecenciaDe(parte) === "comparecio" && parte.comparecioEl ? (
+              <Dato rotulo="Compareció el">
+                <span className="tabular-nums">{formatoFecha(parte.comparecioEl)}</span>
+              </Dato>
+            ) : null}
+          </dl>
+
+          {parte.notas ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{parte.notas}</p>
+          ) : null}
+
+          <Letrados
+            titulo={actuales.length > 1 ? "Letrados" : "Letrado"}
+            letrados={actuales}
+            expedienteId={expedienteId}
+            representables={representables}
+          />
+          <Letrados
+            titulo="Letrados anteriores"
+            letrados={anteriores}
+            expedienteId={expedienteId}
+            representables={representables}
+          />
+
+          <div className="mt-3 flex items-start gap-3 border-t border-linea pt-3">
+            <Editar parte={parte} expedienteId={expedienteId} representables={representables} />
+            <BotonQuitar parte={parte} expedienteId={expedienteId} />
+          </div>
+        </div>
+      </details>
+    </li>
+  );
+}
