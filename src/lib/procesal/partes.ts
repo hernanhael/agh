@@ -1,6 +1,7 @@
 import { normalizarParaBuscar } from "@/lib/formato/texto";
 import {
   CARACTERES_PARTE,
+  etiquetaDe,
   ROLES_PARTE,
   type CaracterParte,
   type Comparecencia,
@@ -22,11 +23,11 @@ import {
  * partes y devuelve cómo mostrarlas, sin tocar el almacén.
  */
 
-export type LadoParte = "actora" | "demandada" | "auxiliares";
+export type LadoParte = "actora" | "demandada" | "citada" | "terceros" | "auxiliares";
 
 /**
  * Las dos **áreas** de la pestaña: las partes del pleito de un lado, los
- * terceros y auxiliares del otro.
+ * auxiliares del juzgado del otro.
  *
  * El lado contesta "¿con quién o contra quién?" y el área contesta "¿esto es
  * el juicio o es lo que lo rodea?". Son dos cortes distintos y los dos se
@@ -36,12 +37,23 @@ export type LadoParte = "actora" | "demandada" | "auxiliares";
 export type AreaParte = "principal" | "secundaria";
 
 /**
- * Los tres lados, con los roles que caen en cada uno.
+ * Los cinco lados, con los roles que caen en cada uno.
  *
- * El citado en garantía va del lado de la demandada porque lo trae el
- * demandado y litiga junto con él, aunque no haya sido demandado. El tercero
- * va con los auxiliares y no con un lado: hasta que no se resuelve cómo
- * interviene, no se sabe de qué lado está.
+ * **Los cuatro primeros son el pleito** y van uno debajo del otro en la
+ * columna ancha, en el orden en que entran a la causa: primero quien reclama,
+ * después contra quién, después la citada en garantía que el demandado trae
+ * para que responda por él, y al final los terceros. Los cuatro litigan, y por
+ * eso están juntos: lo que se lee ahí es *contra quién va este juicio*.
+ *
+ * La citada en garantía y los terceros tienen **lado propio** y no cuelgan de
+ * la demandada. Aunque la citada venga del lado del demandado, no es él: tiene
+ * su propia póliza, su propio letrado y su propia contestación, y el tercero
+ * menos todavía. Meterlos adentro de "parte demandada" obligaba a leer el rol
+ * de cada tarjeta para saber cuál era cuál, que es justo lo que los lados
+ * vinieron a evitar.
+ *
+ * **En la segunda columna quedan los auxiliares del juzgado**: el síndico, el
+ * perito, la mediadora y cualquier otro que intervenga sin litigar.
  *
  * `letrado_contraria` no figura en ninguna lista: no se muestra como una fila
  * propia sino colgando de la parte que representa. Si quedó sin representado,
@@ -55,24 +67,30 @@ export const LADOS_PARTE: ReadonlyArray<{
   roles: ReadonlyArray<RolParte>;
 }> = [
   { lado: "actora", etiqueta: "Parte actora", area: "principal", roles: ["actor"] },
+  { lado: "demandada", etiqueta: "Parte demandada", area: "principal", roles: ["demandado"] },
   {
-    lado: "demandada",
-    etiqueta: "Parte demandada",
+    lado: "citada",
+    etiqueta: "Citada en garantía",
     area: "principal",
-    roles: ["demandado", "citado_garantia"],
+    roles: ["citado_garantia"],
   },
+  { lado: "terceros", etiqueta: "Terceros", area: "principal", roles: ["tercero"] },
   {
     lado: "auxiliares",
-    etiqueta: "Terceros y auxiliares",
+    etiqueta: "Auxiliares",
     area: "secundaria",
-    roles: ["tercero", "sindico", "perito", "mediador", "otro"],
+    roles: ["sindico", "perito", "mediador", "otro"],
   },
 ];
 
 /** Las dos áreas con su título, en el orden en que se leen. */
 export const AREAS_PARTE: ReadonlyArray<{ area: AreaParte; etiqueta: string }> = [
-  { area: "principal", etiqueta: "Partes principales" },
-  { area: "secundaria", etiqueta: "Terceros y auxiliares" },
+  // El área del pleito no lleva título: cada lado adentro ya dice qué es
+  // —"parte actora", "parte demandada"— y un "EL PLEITO" arriba de todos
+  // ellos era un renglón que no agregaba nada. Los auxiliares sí lo llevan,
+  // porque su único lado se llama igual que el área y el rótulo está oculto.
+  { area: "principal", etiqueta: "" },
+  { area: "secundaria", etiqueta: "Auxiliares del juzgado" },
 ];
 
 /**
@@ -83,6 +101,12 @@ export const AREAS_PARTE: ReadonlyArray<{ area: AreaParte; etiqueta: string }> =
  * su propio canal y el mediador ya terminó su intervención cuando el
  * expediente llega al juzgado, así que reclamarles la casilla sería un aviso
  * que el abogado no puede ni necesita resolver.
+ *
+ * Hoy **ninguna pantalla lo usa**: la tarjeta dejó de reclamar la casilla en su
+ * frente (§2.14), porque en un expediente recién cargado faltaba en casi todas
+ * y el ámbar que aparece en todas partes deja de avisar. La regla se queda acá
+ * porque es de a quién se notifica y no de cómo se dibuja una tarjeta: es la
+ * que va a decidir a quién hay que librar cédula cuando eso se construya.
  */
 const ROLES_NOTIFICADOS: ReadonlyArray<RolParte> = [
   "actor",
@@ -98,10 +122,12 @@ export function seNotifica(rol: RolParte): boolean {
   return ROLES_NOTIFICADOS.includes(rol);
 }
 
-/** Una parte con los letrados y apoderados que la representan. */
+/** Una parte con los letrados que la representan y a quién sucede. */
 export interface ParteConRepresentantes {
   parte: Parte;
   representantes: Parte[];
+  /** La parte fallecida cuya posición continúa, si está cargada en la nómina. */
+  sucedido?: Parte;
 }
 
 export interface GrupoPartes {
@@ -165,16 +191,19 @@ export function agruparPartes(partes: ReadonlyArray<Parte>): GrupoPartes[] {
       .map((parte) => ({
         parte,
         representantes: [...(representantes.get(parte.id) ?? [])].sort(compararPartes),
+        // La parte a la que sucede se resuelve acá y no en la pantalla, igual
+        // que los representantes: es otra referencia dentro de la misma nómina
+        // y se cae de la misma manera si apunta a alguien que ya no está.
+        sucedido: parte.sucedeA ? porId.get(parte.sucedeA) : undefined,
       })),
   })).filter((grupo) => grupo.partes.length > 0);
 }
 
 /*
- * Los tres datos que la tarjeta de una parte muestra antes de abrirla
- * (docs/02-expedientes.md §2.14): si compareció, si se la puede notificar y
- * quién es su abogado hoy. Son las tres preguntas que se hacen de un vistazo
- * sobre una nómina, y las tres salen de acá y no de la pantalla, porque las
- * tres tienen una regla atrás.
+ * Los dos datos que la tarjeta de una parte muestra antes de abrirla
+ * (docs/02-expedientes.md §2.14): quién es su abogado hoy y si compareció. Son
+ * las dos preguntas que se hacen de un vistazo sobre una nómina, y las dos
+ * salen de acá y no de la pantalla, porque las dos tienen una regla atrás.
  */
 
 /**
@@ -199,6 +228,27 @@ export function comparece(rol: RolParte): boolean {
 }
 
 /**
+ * Roles que **litigan con letrado**, y a los que por lo tanto la tarjeta puede
+ * reclamarles el que falta.
+ *
+ * No son los mismos que comparecen. El síndico del concurso y el administrador
+ * de la sucesión se presentan en el juicio —comparecen— pero actúan por su
+ * cargo y no con un patrocinio: ponerles "sin letrado" es inventarles un dato
+ * faltante que nunca van a tener. Al perito y a la mediadora, menos.
+ */
+const ROLES_CON_LETRADO: ReadonlyArray<RolParte> = [
+  "actor",
+  "demandado",
+  "citado_garantia",
+  "tercero",
+];
+
+/** Si a esa parte la nómina le puede reclamar el letrado que falta. */
+export function llevaLetrado(rol: RolParte): boolean {
+  return ROLES_CON_LETRADO.includes(rol);
+}
+
+/**
  * En qué estado está la comparecencia de una parte.
  *
  * Resuelve el campo faltante, que es lo normal: las partes cargadas antes de
@@ -218,6 +268,71 @@ export function comparecenciaDe(parte: Parte): Comparecencia {
 /** El carácter con el que interviene. Si no se cargó, por derecho propio. */
 export function caracterDe(parte: Parte): CaracterParte {
   return parte.caracter ?? "por_si";
+}
+
+/**
+ * El **rótulo del rol**, pero solo cuando la sección del tablero no lo dice ya.
+ *
+ * Cada lado del pleito agrupa un solo rol, así que escribir "ACTOR" arriba de
+ * un nombre que está debajo del título "Parte actora" es decir dos veces lo
+ * mismo, y en una tarjeta que es un ícono con dos renglones eso se nota. Donde
+ * sí hace falta es en los auxiliares, que meten cuatro roles bajo un solo
+ * título: ahí la tarjeta tiene que decir si es el perito, la mediadora o el
+ * síndico. Un rol que no cae en ningún lado —el letrado que quedó sin
+ * representado— también lo dice, porque va a parar a esa misma columna.
+ */
+export function rotuloDeRol(rol: RolParte): string {
+  const lado = LADOS_PARTE.find((grupo) => grupo.roles.includes(rol));
+  if (lado && lado.roles.length < 2) return "";
+  return etiquetaDe(ROLES_PARTE, rol);
+}
+
+/**
+ * La **aclaración del carácter** que va al pie de la tarjeta, debajo del
+ * abogado y de la comparecencia, o cadena vacía si no hay nada que aclarar.
+ *
+ * El rol no entra acá: lo dice la sección. Lo que entra es el carácter cuando
+ * cambia el lugar que la parte ocupa, y de las tres maneras que decide el
+ * catálogo con `enElLugar` (`lib/datos/tipos`):
+ *
+ * - **Sucede**: "heredero de Rosa Díaz" cuando la parte fallecida está cargada
+ *   y vinculada, y "heredero" a secas cuando no. Las dos son ciertas y dicen
+ *   cosas distintas: el primero comparece porque murió una parte del juicio;
+ *   el segundo es el heredero que promueve un sucesorio, que no sucede a nadie
+ *   en el expediente.
+ * - **Califica**: "menor", que es cómo hay que tratar a esa parte.
+ * - **Reemplaza**: "Defensoría Oficial".
+ *
+ * Los demás caracteres no entran —"persona jurídica" dice de qué clase de
+ * persona se trata y "citado coactivamente" cómo llegó al juicio, y ninguno
+ * cambia con quién se litiga— y quedan adentro de la ficha, con su
+ * particularidad, que es donde se los va a buscar.
+ */
+export function aclaracionDe(parte: Parte, sucedido?: Parte): string {
+  const caracter = CARACTERES_PARTE.find((candidato) => candidato.valor === caracterDe(parte));
+  if (!caracter?.enElLugar) return "";
+
+  const palabra = caracter.palabraEnElLugar ?? caracter.etiqueta;
+  if (caracter.enElLugar !== "sucede") return palabra;
+  return sucedido ? `${palabra} de ${sucedido.nombre}` : palabra;
+}
+
+/**
+ * El nombre de un letrado partido en los **dos renglones** con que se lee una
+ * Defensoría: el organismo arriba y cuál es debajo.
+ *
+ * "Defensoría Oficial Civil de Concepción" en un solo renglón angosto se
+ * corta en "Defensoría Oficial Civ…", que es justo donde empieza lo
+ * que distingue a una defensoría de otra. Partido, los dos pedazos entran. El
+ * prefijo se saca del nombre si está escrito, así que da igual cargarla como
+ * "Defensoría Oficial Civil de Concepción" o como "Civil de Concepción".
+ */
+export function renglonesDeLetrado(letrado: Parte): { nombre: string; debajo: string } {
+  if (caracterDe(letrado) !== "defensoria_oficial") {
+    return { nombre: letrado.nombre, debajo: "" };
+  }
+  const cual = letrado.nombre.replace(/^\s*defensor[íi]a(\s+oficial)?\s*/i, "").trim();
+  return { nombre: "Defensoría Oficial", debajo: cual };
 }
 
 /**
@@ -264,8 +379,14 @@ export function clienteDeLaNomina(partes: ReadonlyArray<Parte>): Parte | undefin
 }
 
 /**
- * De qué lado del pleito está el estudio, para teñir el filete de las
- * tarjetas.
+ * De qué lado del pleito está el estudio.
+ *
+ * Hoy **ninguna pantalla lo usa**, igual que `seNotifica`: lo pedía el filete
+ * del borde de la tarjeta para teñirlo, y después el color del ícono, y los dos
+ * se fueron cuando los íconos pasaron a ser todos iguales (§2.14). La regla se
+ * queda acá porque es de dónde está parado el estudio y no de cómo se dibuja
+ * una tarjeta: es la que va a contestar de nuevo "quién es de los míos" cuando
+ * se decida dónde vuelve a verse.
  *
  * Lo dice primero **la nómina**: el lado de la parte marcada como cliente es
  * el lado del estudio, y es el dato más confiable porque alguien lo marcó
@@ -282,6 +403,7 @@ export function ladoDelCliente(
   if (cliente) return ladoDeRol(cliente.rol);
   if (expediente.rolCliente === "actor") return "actora";
   if (expediente.rolCliente === "demandado") return "demandada";
+  if (expediente.rolCliente === "tercero") return "terceros";
   return undefined;
 }
 

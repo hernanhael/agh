@@ -36,6 +36,10 @@ export interface EntradaParte {
   representaA: string;
   /** Fecha en que el letrado cesó en la representación. Vacía si sigue. */
   cesoEl: string;
+  /** Fecha de fallecimiento de la parte. Vacía si no falleció. */
+  fallecioEl: string;
+  /** Id de la parte fallecida cuya posición continúa. Vacío si no sucede. */
+  sucedeA: string;
   caracter: CaracterParte;
   /** Vacío significa "lo que corresponda a su rol", que se resuelve al leer. */
   comparecencia: Comparecencia | "";
@@ -110,6 +114,7 @@ function normalizar(entrada: EntradaParte, acentuar: boolean) {
         ? fechaValida(entrada.comparecioEl)
         : "",
     cesoEl: fechaValida(entrada.cesoEl),
+    fallecioEl: fechaValida(entrada.fallecioEl),
   };
 }
 
@@ -133,6 +138,28 @@ function representaValido(
   if (representado.id === idPropio) return "";
   if (representado.representaA) return "";
   return representado.id;
+}
+
+/**
+ * A quién sucede, validado contra la nómina del mismo expediente.
+ *
+ * Las mismas reglas que `representaValido`, menos la de la cadena: suceder a
+ * quien a su vez sucedió a otro es un caso real —muere el actor, lo sucede su
+ * hijo, muere el hijo— y la pestaña lo dibuja igual, porque de la parte
+ * sucedida solo usa el nombre.
+ */
+function sucedeValido(
+  datos: Datos,
+  expedienteId: string,
+  sucedeA: string,
+  idPropio: string,
+): string {
+  if (!sucedeA) return "";
+  const sucedido = (datos.partes ?? []).find((parte) => parte.id === sucedeA);
+  if (!sucedido) return "";
+  if (sucedido.expedienteId !== expedienteId) return "";
+  if (sucedido.id === idPropio) return "";
+  return sucedido.id;
 }
 
 /** Deja una sola parte marcada como cliente en el expediente. */
@@ -172,6 +199,7 @@ export async function crearParte(entrada: EntradaParte): Promise<Resultado<Parte
       // Cesar es dejar de representar: en quien no representa a nadie, la
       // fecha no significa nada y no se guarda.
       cesoEl: representaA ? campos.cesoEl : "",
+      sucedeA: sucedeValido(datos, expediente.id, entrada.sucedeA, ""),
       creadoEn: marca,
       actualizadoEn: marca,
     };
@@ -205,6 +233,7 @@ export async function actualizarParte(
     Object.assign(parte, campos, {
       representaA,
       cesoEl: representaA ? campos.cesoEl : "",
+      sucedeA: sucedeValido(datos, parte.expedienteId, entrada.sucedeA, parte.id),
       actualizadoEn: ahora(),
     });
     if (parte.esCliente) clienteUnico(datos, parte.expedienteId, parte.id);
@@ -242,6 +271,8 @@ export async function sumarParteDeCaratula(
     email: "",
     representaA: "",
     cesoEl: "",
+    fallecioEl: "",
+    sucedeA: "",
     // El carácter y la comparecencia los completa el abogado: la carátula no
     // los dice, y lo que no se sabe se resuelve al leer y no se inventa acá.
     caracter: "por_si",
@@ -261,11 +292,16 @@ export async function eliminarParte(id: string): Promise<Resultado<string>> {
     if (indice === -1) return fallo<string>("No se encontró la parte.");
     const [borrada] = datos.partes.splice(indice, 1);
 
-    // Los letrados de quien se borró quedan sin representado: se les suelta la
-    // referencia en lugar de dejarla apuntando a una parte que ya no existe.
+    // Los letrados de quien se borró quedan sin representado, y los herederos
+    // sin causante: se les suelta la referencia en lugar de dejarla apuntando a
+    // una parte que ya no existe.
     for (const parte of datos.partes) {
       if (parte.representaA === borrada.id) {
         parte.representaA = "";
+        parte.actualizadoEn = ahora();
+      }
+      if (parte.sucedeA === borrada.id) {
+        parte.sucedeA = "";
         parte.actualizadoEn = ahora();
       }
     }

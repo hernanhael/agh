@@ -85,8 +85,10 @@ app/
     nuevo/           alta con previsualización de carátula
     [id]/            ficha por pestañas: una ruta por pestaña (02-expedientes.md §2.13)
       datos/           metadatos del expediente y formulario de edición
-      partes/          nómina de partes en tarjetas: rol, carácter, comparecencia,
-                       domicilio digital y abogado actual (§2.14)
+      partes/          nómina de partes: cada parte es un ícono con su nombre;
+                       el pleito en una columna —actora, demandada, citada y
+                       terceros— y los auxiliares en la otra, con los atajos
+                       que la recorren por lado (§2.14)
       agenda/          audiencia fijada y plazo de caducidad corriendo
       historia/        línea de tiempo del expediente, recorrido por las etapas
                        y editor de escritos (§2.3 y §2.5)

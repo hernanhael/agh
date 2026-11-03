@@ -28,7 +28,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex h-full min-h-screen">
         <Nav />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        {/*
+          El `min-w-0` no es decorativo: sin él, `main` es un hijo flexible con
+          el mínimo automático —no puede angostarse menos que el contenido más
+          ancho que tenga adentro—, así que una pantalla con algo ancho estira
+          el área de trabajo, empuja el ancho del cuerpo y **aparece scroll
+          lateral**. Y como `main` tiene `overflow-y`, el navegador le calcula
+          `overflow-x: auto`, así que además de la barra de la ventana puede
+          salir la suya propia: dos barras por el mismo motivo. Con el mínimo
+          en cero, el contenido se acomoda adentro.
+        */}
+        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
       </body>
     </html>
   );

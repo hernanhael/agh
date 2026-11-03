@@ -126,6 +126,40 @@ export function FormularioParte({
             className={claseEntrada}
           />
         </Campo>
+        {/*
+          La muerte de una parte y quién la sucede van juntas y pegadas a la
+          comparecencia, porque son el mismo tramo de la historia: se presentó,
+          después murió, después comparecieron sus herederos. La parte fallecida
+          no se borra de la nómina —su tarjeta se apaga y queda con la fecha—,
+          así que esto es lo único que hay que cargar.
+        */}
+        <Campo etiqueta="Falleció el" ayuda="Si la parte murió durante el juicio.">
+          <input
+            type="date"
+            name="fallecioEl"
+            defaultValue={parte?.fallecioEl}
+            className={claseEntrada}
+          />
+        </Campo>
+        {/*
+          El heredero no representa al causante: lo sucede, así que esto es un
+          campo aparte de "representa a". Ofrece las mismas partes, que son las
+          que no representan a nadie; lo normal es que la elegida sea una que ya
+          tenga cargada su fecha de fallecimiento.
+        */}
+        <Campo
+          etiqueta="Continúa la posición de"
+          ayuda="Para los herederos: la parte fallecida a la que suceden."
+        >
+          <select name="sucedeA" defaultValue={parte?.sucedeA ?? ""} className={claseEntrada}>
+            <option value="">A nadie</option>
+            {representables.map((candidata) => (
+              <option key={candidata.id} value={candidata.id}>
+                {candidata.nombre}
+              </option>
+            ))}
+          </select>
+        </Campo>
         <Campo etiqueta="Teléfono">
           <input
             type="text"

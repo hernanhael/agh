@@ -175,6 +175,8 @@ function entradaParte(datos: FormData): EntradaParte {
     email: texto(datos, "email"),
     representaA: texto(datos, "representaA"),
     cesoEl: texto(datos, "cesoEl"),
+    fallecioEl: texto(datos, "fallecioEl"),
+    sucedeA: texto(datos, "sucedeA"),
     caracter: texto(datos, "caracter") as CaracterParte,
     // La opción vacía del desplegable es un valor válido: significa "lo que
     // corresponda a su rol", y el repositorio la guarda como tal.

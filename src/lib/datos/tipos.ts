@@ -495,6 +495,8 @@ export type CaracterParte =
   | "citado_coactivo"
   | "citado_voluntario"
   | "litisconsorte"
+  | "patrocinante"
+  | "apoderado"
   | "otro";
 
 /**
@@ -566,6 +568,26 @@ export interface Parte {
    * expediente y es a quien hay que buscar para preguntar por eso.
    */
   cesoEl?: string;
+  /**
+   * Fecha de **fallecimiento** de la parte. Vacía mientras vive.
+   *
+   * La parte que muere no se borra de la nómina: su tarjeta se apaga y queda
+   * con el nombre y esta fecha, porque todo lo que presentó sigue en el
+   * expediente y porque es de quién vienen los herederos que comparecen
+   * después. El juicio tampoco sigue igual: hay que suspenderlo y emplazar a
+   * los herederos (docs/02-expedientes.md §2.14).
+   */
+  fallecioEl?: string;
+  /**
+   * Id de la parte **fallecida cuya posición continúa**: el heredero que
+   * comparece en lugar de quien murió.
+   *
+   * No es lo mismo que `representaA`, que es el letrado con su representado: el
+   * heredero no representa al causante, lo sucede. Con esto cargado, la tarjeta
+   * del heredero dice de quién hereda —"heredero de Rosa Díaz"— en lugar de
+   * decir "heredero" a secas.
+   */
+  sucedeA?: string;
 }
 
 export const ROLES_PARTE: ReadonlyArray<{
@@ -587,8 +609,9 @@ export const ROLES_PARTE: ReadonlyArray<{
   },
   {
     valor: "letrado_contraria",
-    etiqueta: "Letrado o apoderado",
-    detalle: "El abogado de una de las partes. Se vincula a la parte que representa.",
+    etiqueta: "Letrado",
+    detalle:
+      "El abogado de una de las partes, patrocinante o apoderado según su carácter. Se vincula a la parte que representa.",
   },
   { valor: "perito", etiqueta: "Perito", detalle: "Auxiliar designado por el juzgado." },
   { valor: "mediador", etiqueta: "Mediador", detalle: "Quien condujo la mediación." },
@@ -615,6 +638,43 @@ export const CARACTERES_PARTE: ReadonlyArray<{
   detalle: string;
   /** Lo que hay que tener presente de esa parte. Vacío si no hay nada. */
   particularidad: string;
+  /**
+   * Si el carácter **nombra el lugar** que la parte ocupa en el juicio, y por
+   * lo tanto se escribe en la cara de su tarjeta junto al rol: "heredero del
+   * actor" no es un actor con una aclaración al costado, es otro lugar, y con
+   * él se litiga distinto (`lugarDe` en `lib/procesal/partes`).
+   *
+   * Los demás no entran: "persona jurídica" dice de qué clase de persona se
+   * trata y "citado coactivamente" cómo llegó al juicio, pero ninguno cambia
+   * con quién se litiga, y en una tarjeta angosta le robaban el renglón al
+   * nombre. Siguen adentro de la ficha, en su particularidad, que es donde se
+   * los consulta.
+   */
+  /**
+   * Cómo entra el carácter en **el nombre del lugar** que la parte ocupa, que
+   * es lo que la tarjeta escribe arriba del nombre (`lugarDe` en
+   * `lib/procesal/partes`). Sin valor no entra, y queda adentro de la ficha con
+   * su particularidad: "persona jurídica" dice de qué clase de persona se trata
+   * y "citado coactivamente" cómo llegó al juicio, pero ninguno cambia con
+   * quién se litiga.
+   *
+   * - `sucede`: **toma el lugar del que lo ocupaba, y lo nombra** —"heredero de
+   *   Rosa Díaz"—. Es el carácter de quien comparece porque una parte murió.
+   *   Mientras no esté cargada la parte fallecida va solo —"heredero"—, que es
+   *   lo que pasa en un sucesorio, donde el heredero promueve y no sucede a
+   *   nadie en el juicio.
+   * - `califica`: **se suma al rol sin reemplazarlo** —"actor menor"—, cuando
+   *   lo que cambia es cómo hay que tratar a esa parte y no qué lugar ocupa.
+   * - `reemplaza`: **es el lugar**, y el rol al lado sobra —"Defensoría
+   *   Oficial"—.
+   */
+  enElLugar?: "sucede" | "califica" | "reemplaza";
+  /**
+   * Con qué palabra entra, cuando la etiqueta entera no sirve: "Menor de edad"
+   * es la opción que el formulario necesita para que no se confunda con nada, y
+   * "menor" es lo que entra en un renglón de versalitas.
+   */
+  palabraEnElLugar?: string;
 }> = [
   {
     valor: "por_si",
@@ -628,6 +688,7 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     detalle: "Continúa la posición de una parte que falleció.",
     particularidad:
       "Hay que acreditar la vocación hereditaria —declaratoria de herederos o testamento aprobado— antes de que se lo tenga por parte.",
+    enElLugar: "sucede",
   },
   {
     valor: "sucesion",
@@ -635,6 +696,7 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     detalle: "El acervo todavía no partido, no una persona.",
     particularidad:
       "Se la emplaza en la persona del administrador de la sucesión; si no hay administrador designado, a todos los herederos.",
+    enElLugar: "sucede",
   },
   {
     valor: "menor",
@@ -642,6 +704,11 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     detalle: "Niña, niño o adolescente.",
     particularidad:
       "Actúa por sus representantes legales y con intervención del Ministerio Pupilar, que se notifica aparte. Tiene derecho a ser oído y su opinión se pesa según su edad y madurez.",
+    // Sigue siendo el actor: la minoría de edad no cambia el lugar, cambia
+    // cómo hay que tratarlo. "Menor de edad" no entra en un renglón de
+    // versalitas tan angosto, y "menor" dice lo mismo.
+    enElLugar: "califica",
+    palabraEnElLugar: "menor",
   },
   {
     valor: "capacidad_restringida",
@@ -656,6 +723,9 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     detalle: "Asiste o representa a quien no tiene letrado particular.",
     particularidad:
       "Las notificaciones van a la Defensoría y no al domicilio de la parte. Los plazos se cuentan desde que la Defensoría quedó notificada.",
+    // Es el lugar, y el rol al lado sobra: lo que hace falta saber es que
+    // interviene la Defensoría y cuál, no que sea "letrado".
+    enElLugar: "reemplaza",
   },
   {
     valor: "persona_juridica",
@@ -690,6 +760,33 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     detalle: "Uno de varios que ocupan el mismo lado.",
     particularidad:
       "Si el litisconsorcio es necesario, los actos del juicio los tienen que alcanzar a todos: no se puede avanzar con uno solo notificado.",
+  },
+  /*
+   * Los dos caracteres del letrado, que contestan **con qué firma**: el
+   * patrocinante asiste a la parte, que firma con él; el apoderado tiene poder
+   * y firma solo, en nombre de ella. Es lo primero que hay que saber de un
+   * abogado de enfrente, porque cambia a quién se notifica y si la parte tiene
+   * que estar.
+   *
+   * Los dos reemplazan el rol en la cara de la tarjeta: "letrado" ya se ve en
+   * que cuelga de su representado, y lo que hace falta leer es cuál de los dos
+   * es. Las denominaciones y sus particularidades están **[a confirmar]**.
+   */
+  {
+    valor: "patrocinante",
+    etiqueta: "Patrocinante",
+    detalle: "Asiste a la parte, que firma los escritos con él.",
+    particularidad:
+      "La parte firma con él y se la notifica en su propio domicilio: el patrocinio no la reemplaza en los actos que tiene que hacer en persona.",
+    enElLugar: "reemplaza",
+  },
+  {
+    valor: "apoderado",
+    etiqueta: "Apoderado",
+    detalle: "Tiene poder: actúa en nombre de la parte y firma solo.",
+    particularidad:
+      "Actúa en nombre de la parte y la obliga, así que las notificaciones van a él. Hay que ver que el poder esté agregado y que alcance para el acto: los de disposición y el allanamiento necesitan facultad expresa.",
+    enElLugar: "reemplaza",
   },
   {
     valor: "otro",

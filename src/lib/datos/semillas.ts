@@ -649,32 +649,43 @@ export const GASTOS_EJEMPLO: Gasto[] = [
  * Nóminas de partes de ejemplo, sobre dos expedientes: el ordinario de daños
  * contra una ART (Rogel) y el sucesorio (Díaz) (docs/02-expedientes.md §2.14).
  *
- * Están armadas para que se vea el **tablero entero**, y cada parte está
- * puesta para mostrar un estado distinto de la tarjeta.
+ * Entre los dos están **los nueve roles y trece de los catorce caracteres**, a
+ * propósito: la nómina es el lugar donde el catálogo se lee en voz alta, y
+ * tenerlo entero cargado es lo que permite revisar si cada denominación y cada
+ * particularidad dicen lo que tienen que decir. Cada parte está puesta para
+ * mostrar un estado distinto de la tarjeta.
  *
  * El de Rogel es un accidente de trabajo demandado contra la ART y contra la
- * empleadora, con la aseguradora de la empleadora citada en garantía y la
- * dueña de la máquina traída como tercero. Las ocho tarjetas recorren los dos
- * lados del pleito y la columna de los auxiliares:
+ * empleadora, con la aseguradora de la empleadora citada en garantía, la dueña
+ * de la máquina traída como tercero, el coactor que murió en el medio y el
+ * síndico del concurso de la empleadora:
  *
  * | Parte | Lo que muestra |
  * |---|---|
- * | Nicolás Rogel | el cliente: filete del acento y "el estudio" como abogado |
- * | Hugo Maidana | uno de los míos que no es el cliente: filete apagado |
- * | Swiss Medical ART | dos letrados actuales ("+1") y una letrada que cesó |
+ * | Nicolás Rogel | el cliente, con "el estudio" como abogado |
+ * | Hugo Maidana | **la parte que murió**: la tarjeta apagada, con su fecha |
+ * | Gabriela Maidana | **heredera de una parte fallecida**, con el vínculo cargado |
+ * | Swiss Medical ART | dos letrados actuales ("+1"), uno apoderado y otra patrocinante, y una letrada que cesó |
  * | Citrícola del Valle SA | la codemandada, con su propio letrado |
  * | La Segunda Seguros | la citada en garantía, que todavía no compareció |
  * | Maquinarias del Norte SRL | el tercero citado, declarado **rebelde** |
  * | Silvia Juárez | la perito: no comparece y no lleva letrado |
  * | Ana Carrizo | la mediadora: una tarjeta sin ninguna señal |
+ * | Ramón Paz | el **síndico** del concurso de la empleadora |
  *
- * Dos quedan **sin domicilio electrónico** a propósito, que es el aviso que la
- * tarjeta muestra cuando falta la casilla del SAE.
+ * Dos quedan **sin domicilio electrónico** a propósito, que es el dato que la
+ * ficha muestra vacío cuando falta la casilla del SAE.
  *
- * El de Díaz es el que muestra **los caracteres**: una heredera que es la
- * clienta, un heredero menor de edad asistido por la Defensoría Oficial y una
- * acreedora que todavía no compareció. Son los tres casos en los que la
- * tarjeta deja de ser un nombre con un rol y advierte algo.
+ * El de Díaz es el que muestra **los caracteres de la parte**: una heredera que
+ * es la clienta, un heredero menor de edad asistido por la Defensoría Oficial,
+ * una hija con capacidad restringida, el fisco provincial que denunció su
+ * crédito, una acreedora que todavía no compareció y el administrador de la
+ * sucesión, que es la tarjeta del rol "otro".
+ *
+ * **Falta un solo carácter**: la sucesión indivisa, que no tiene lugar natural
+ * en un daños ni en un sucesorio —aparece cuando se demanda al acervo de una
+ * persona muerta, como en un cobro ejecutivo— y que se cargará en el expediente
+ * donde corresponda.
  *
  * Los documentos, domicilios y teléfonos son **inventados**: son un ejemplo
  * editable como cualquier otra semilla.
@@ -705,9 +716,10 @@ export const PARTES_EJEMPLO: Parte[] = [
   {
     /*
      * El compañero de trabajo accidentado en el mismo hecho, que demandó junto
-     * con el cliente. Es el que muestra el **filete apagado**: está del lado
-     * del estudio pero no es el cliente, así que la contabilidad y la
-     * rendición no son suyas.
+     * con el cliente y **murió con el juicio en prueba**. Es la tarjeta que se
+     * apaga: queda con su nombre y la fecha, sin abogado y sin comparecencia,
+     * porque lo que presentó sigue en el expediente y porque de él viene la
+     * heredera que comparece después.
      */
     id: "pa-rogel-coactor",
     expedienteId: "ex-rogel",
@@ -720,11 +732,41 @@ export const PARTES_EJEMPLO: Parte[] = [
     email: "",
     representaA: "",
     cesoEl: "",
+    fallecioEl: "2026-10-02",
     caracter: "litisconsorte",
     comparecencia: "comparecio",
     comparecioEl: "2026-08-25",
     esCliente: false,
     notas: "Accidentado en el mismo hecho. Demandó junto con el cliente.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * La hija del coactor que murió: comparece a tomar su lugar, y es la que
+     * muestra **el vínculo con la parte fallecida**, así que su tarjeta dice de
+     * quién hereda en lugar de decir "heredero" a secas. Es, además, la que
+     * está del lado del estudio pero no es la clienta, así que la contabilidad y
+     * la rendición no son suyas.
+     */
+    id: "pa-rogel-heredera",
+    expedienteId: "ex-rogel",
+    rol: "actor",
+    nombre: "Gabriela Maidana",
+    documento: "35.447.908",
+    domicilioReal: "Pasaje Las Piedras 77, Banda del Río Salí",
+    domicilioElectronico: "27-35447908-4",
+    telefono: "381 555 0506",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    sucedeA: "pa-rogel-coactor",
+    caracter: "heredero",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-10-20",
+    esCliente: false,
+    notas:
+      "Hija de Hugo Maidana. Acreditó la declaratoria de herederos y continúa el reclamo de su padre.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },
@@ -738,12 +780,13 @@ export const PARTES_EJEMPLO: Parte[] = [
     domicilioElectronico: "27-26334455-9",
     telefono: "381 555 0606",
     email: "",
-    representaA: "pa-rogel-coactor",
+    representaA: "pa-rogel-heredera",
     cesoEl: "",
-    caracter: "por_si",
+    caracter: "apoderado",
     comparecioEl: "",
     esCliente: false,
-    notas: "Patrocina al coactor. Firmó la demanda junto con el estudio.",
+    notas:
+      "Firmó la demanda junto con el estudio por el coactor, y hoy es la apoderada de su heredera.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },
@@ -780,7 +823,7 @@ export const PARTES_EJEMPLO: Parte[] = [
     email: "",
     representaA: "pa-rogel-demandada",
     cesoEl: "",
-    caracter: "por_si",
+    caracter: "apoderado",
     comparecioEl: "",
     esCliente: false,
     notas: "Apoderado de la ART. Contestó la demanda el 12/09/2026.",
@@ -801,7 +844,7 @@ export const PARTES_EJEMPLO: Parte[] = [
     email: "",
     representaA: "pa-rogel-demandada",
     cesoEl: "",
-    caracter: "por_si",
+    caracter: "patrocinante",
     comparecioEl: "",
     esCliente: false,
     notas: "Apoderada de la ART, junto con Ledesma.",
@@ -823,7 +866,7 @@ export const PARTES_EJEMPLO: Parte[] = [
     email: "",
     representaA: "pa-rogel-demandada",
     cesoEl: "2026-09-10",
-    caracter: "por_si",
+    caracter: "patrocinante",
     comparecioEl: "",
     esCliente: false,
     notas: "Renunció al patrocinio antes de la contestación.",
@@ -864,7 +907,7 @@ export const PARTES_EJEMPLO: Parte[] = [
     email: "",
     representaA: "pa-rogel-empleadora",
     cesoEl: "",
-    caracter: "por_si",
+    caracter: "patrocinante",
     comparecioEl: "",
     esCliente: false,
     notas: "Apoderado de la empleadora.",
@@ -959,6 +1002,34 @@ export const PARTES_EJEMPLO: Parte[] = [
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },
+  {
+    /*
+     * El síndico del concurso de la empleadora, que entró en concurso
+     * preventivo con el juicio en prueba. Es la tarjeta del rol **síndico**, y
+     * está acá y no en un concursal porque es así como aparece: el juicio de
+     * daños sigue, y el crédito contra la concursada se verifica en el otro
+     * expediente.
+     */
+    id: "pa-rogel-sindico",
+    expedienteId: "ex-rogel",
+    rol: "sindico",
+    nombre: "Ramón Paz",
+    documento: "22.447.019",
+    domicilioReal: "Córdoba 230, San Miguel de Tucumán",
+    domicilioElectronico: "20-22447019-3",
+    telefono: "381 555 0808",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "por_si",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-10-15",
+    esCliente: false,
+    notas:
+      "Síndico del concurso preventivo de Citrícola del Valle SA. Se presentó a tomar intervención en este juicio.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
 
   /*
    * Sucesorio de Rosa Díaz: el ejemplo de los **caracteres**. Los herederos
@@ -1044,6 +1115,85 @@ export const PARTES_EJEMPLO: Parte[] = [
     comparecioEl: "",
     esCliente: false,
     notas: "Denunció un crédito contra la causante. Todavía no se presentó.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * La otra hija, con **capacidad restringida**: actúa con la curadora que le
+     * fijó la sentencia y el Ministerio Público interviene en el juicio. Es el
+     * caso que muestra que el carácter es uno solo por parte: es heredera igual
+     * que su hermana, pero lo que cambia el trámite es su capacidad, así que es
+     * eso lo que la tarjeta dice.
+     */
+    id: "pa-diaz-hermana",
+    expedienteId: "ex-diaz",
+    rol: "actor",
+    nombre: "Mirta Díaz",
+    documento: "24.660.901",
+    domicilioReal: "Laprida 980, Concepción",
+    domicilioElectronico: "27-24660901-8",
+    telefono: "3865 55 0404",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "capacidad_restringida",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-07-10",
+    esCliente: false,
+    notas: "Hija de la causante. Actúa con su curadora designada por sentencia.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * El fisco provincial, que denunció la deuda de impuesto inmobiliario de la
+     * causante: es el **organismo estatal**, con su propia representación
+     * letrada y sus formas de emplazamiento.
+     */
+    id: "pa-diaz-fisco",
+    expedienteId: "ex-diaz",
+    rol: "tercero",
+    nombre: "Dirección General de Rentas de Tucumán",
+    documento: "30-99900011-7",
+    domicilioReal: "San Martín 515, San Miguel de Tucumán",
+    domicilioElectronico: "30-99900011-7",
+    telefono: "",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "organismo_estatal",
+    comparecencia: "pendiente",
+    comparecioEl: "",
+    esCliente: false,
+    notas: "Denunció deuda de impuesto inmobiliario del inmueble del acervo.",
+    creadoEn: AHORA,
+    actualizadoEn: AHORA,
+  },
+  {
+    /*
+     * El administrador de la sucesión: no es parte ni letrado, es quien
+     * administra el acervo mientras no se parte. Es la tarjeta del rol **otro**,
+     * el que la nómina reserva para quien interviene sin encajar en ninguno de
+     * los ocho anteriores.
+     */
+    id: "pa-diaz-administrador",
+    expedienteId: "ex-diaz",
+    rol: "otro",
+    nombre: "Raúl Correa",
+    documento: "20.114.773",
+    domicilioReal: "Bolívar 120, Concepción",
+    domicilioElectronico: "20-20114773-2",
+    telefono: "3865 55 0707",
+    email: "",
+    representaA: "",
+    cesoEl: "",
+    caracter: "otro",
+    comparecencia: "comparecio",
+    comparecioEl: "2026-09-05",
+    esCliente: false,
+    notas:
+      "Contador designado administrador de la sucesión a propuesta de los herederos. Aceptó el cargo el 05/09/2026.",
     creadoEn: AHORA,
     actualizadoEn: AHORA,
   },

@@ -3,8 +3,9 @@
  *
  * Las teclas de función de las pestañas viven en `pestanas.ts`, que es su
  * fuente de la verdad. Acá van los atajos de adentro de una pestaña: la nota
- * (`alt+n`) y el formulario del expediente (`alt+e`) en Datos, y el alta de
- * una parte (`alt+p`) en Partes.
+ * (`alt+n`) y el formulario del expediente (`alt+e`) en Datos, y en Partes el
+ * alta (`alt+p`) y los cuatro que recorren el tablero por lado —`alt+a`,
+ * `alt+d`, `alt+g` y `alt+t`— que están al final del archivo.
  *
  * **Los dos van con Alt**, y la razón empieza en la nota: Chrome en Windows se
  * reserva `Ctrl+N` para abrir una ventana nueva y **no le entrega el evento a
@@ -65,4 +66,57 @@ export function esAtajoAlt(evento: KeyboardEvent, codigo: string): boolean {
 /** `Alt+N`, el de la nota. */
 export function esAtajoNota(evento: KeyboardEvent): boolean {
   return esAtajoAlt(evento, "KeyN");
+}
+
+/**
+ * Los atajos que **recorren el tablero de partes**, uno por lado: `alt+a` va a
+ * la parte actora, `alt+d` a la demandada, `alt+g` a la citada en garantía y
+ * `alt+t` —o `alt+5`— a los terceros.
+ *
+ * **Son secuenciales**: la primera vez llevan a la primera parte de ese lado, y
+ * cada vez que se repite la tecla con el `alt` apretado pasan a la siguiente,
+ * hasta volver a la primera. Es el gesto de un litisconsorcio: en un juicio con
+ * tres actores, `alt+a` tres veces los recorre a los tres sin tocar el mouse.
+ *
+ * Las letras son las iniciales de cada lado y por eso se acuerdan. Los terceros
+ * llevan dos teclas porque la `t` es la inicial y el `5` es el número del lado
+ * contando desde arriba; cuesta lo mismo aceptar las dos que elegir una.
+ *
+ * El lado se compara contra el atributo `data-lado` que la pestaña escribe en
+ * cada grupo del tablero (`partes/page.tsx`), así que lo que decide qué parte
+ * recibe el foco es el orden en que están en la pantalla y no una lista aparte
+ * que haya que mantener sincronizada.
+ */
+export const ATAJOS_LADO: ReadonlyArray<{
+  /** El lado del tablero, como lo nombra `LadoParte` en `lib/procesal`. */
+  lado: string;
+  /** El atajo escrito, para la pista que la pestaña muestra al pasar el mouse. */
+  atajo: string;
+  /** Las teclas físicas que lo disparan (`KeyboardEvent.code`). */
+  codigos: ReadonlyArray<string>;
+}> = [
+  { lado: "actora", atajo: "alt+a", codigos: ["KeyA"] },
+  { lado: "demandada", atajo: "alt+d", codigos: ["KeyD"] },
+  { lado: "citada", atajo: "alt+g", codigos: ["KeyG"] },
+  { lado: "terceros", atajo: "alt+t", codigos: ["KeyT", "Digit5", "Numpad5"] },
+];
+
+/**
+ * El atajo de un lado, **aceptando también el `Alt` de la derecha**.
+ *
+ * En los teclados latinoamericanos el Alt derecho es `AltGr`, que prende
+ * `ctrlKey` además de `altKey`, así que `esAtajoAlt` lo rechaza —y con razón,
+ * porque `AltGr`+tecla es lo que escribe la arroba y el numeral—. Pero ninguna
+ * de las teclas de este tablero escribe un carácter con `AltGr` en esa
+ * distribución, y pedirle a quien usa el Alt de la derecha que cambie de mano
+ * para recorrer la nómina no tiene sentido: acá se aceptan los dos.
+ */
+export function esAtajoDeLado(evento: KeyboardEvent, codigo: string): boolean {
+  if (!evento.altKey || evento.metaKey || evento.shiftKey) return false;
+  return evento.code === codigo;
+}
+
+/** El atajo escrito de un lado, o cadena vacía si ese lado no tiene. */
+export function atajoDeLado(lado: string): string {
+  return ATAJOS_LADO.find((candidato) => candidato.lado === lado)?.atajo ?? "";
 }

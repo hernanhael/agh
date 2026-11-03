@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Expediente, Parte } from "@/lib/datos/tipos";
 import {
+  aclaracionDe,
   agruparPartes,
   caracterDe,
   clienteDeLaNomina,
@@ -10,6 +11,9 @@ import {
   ladoDeRol,
   ladoDelCliente,
   letradosDe,
+  llevaLetrado,
+  rotuloDeRol,
+  renglonesDeLetrado,
   particularidadDe,
   seNotifica,
 } from "./partes";
@@ -63,13 +67,16 @@ describe("ladoDeRol", () => {
     expect(ladoDeRol("mediador")).toBe("auxiliares");
   });
 
-  it("pone al citado en garantía del lado de la demandada", () => {
-    expect(ladoDeRol("citado_garantia")).toBe("demandada");
+  it("la citada en garantía y los terceros tienen lado propio, en el pleito", () => {
+    // Vienen del lado del demandado pero no son él: tienen su propia póliza,
+    // su propio letrado y su propia contestación.
+    expect(ladoDeRol("citado_garantia")).toBe("citada");
+    expect(ladoDeRol("tercero")).toBe("terceros");
     expect(ladoDeRol("demandado")).toBe("demandada");
   });
 
-  it("manda al tercero y a los auxiliares del juzgado al mismo lado", () => {
-    expect(ladoDeRol("tercero")).toBe("auxiliares");
+  it("manda a los auxiliares del juzgado al mismo lado", () => {
+    expect(ladoDeRol("sindico")).toBe("auxiliares");
     expect(ladoDeRol("perito")).toBe("auxiliares");
     expect(ladoDeRol("mediador")).toBe("auxiliares");
   });
@@ -119,11 +126,26 @@ describe("agruparPartes", () => {
 
   it("ordena cada lado por rol y después por nombre", () => {
     const grupos = agruparPartes([
-      parte({ id: "c", rol: "citado_garantia", nombre: "Aseguradora" }),
       parte({ id: "d2", rol: "demandado", nombre: "Zabala" }),
       parte({ id: "d1", rol: "demandado", nombre: "Álvarez" }),
     ]);
-    expect(grupos[0].partes.map((fila) => fila.parte.id)).toEqual(["d1", "d2", "c"]);
+    expect(grupos[0].partes.map((fila) => fila.parte.id)).toEqual(["d1", "d2"]);
+  });
+
+  it("cuelga de cada heredero la parte fallecida a la que sucede", () => {
+    const grupos = agruparPartes([
+      parte({ id: "a", rol: "actor", nombre: "Rosa Díaz", fallecioEl: "2026-03-14" }),
+      parte({ id: "h", rol: "actor", nombre: "Carla Díaz", caracter: "heredero", sucedeA: "a" }),
+    ]);
+    const heredero = grupos[0].partes.find((fila) => fila.parte.id === "h");
+    expect(heredero?.sucedido?.nombre).toBe("Rosa Díaz");
+  });
+
+  it("si la parte fallecida no está en la nómina, el heredero queda sin ella", () => {
+    const grupos = agruparPartes([
+      parte({ id: "h", rol: "actor", caracter: "heredero", sucedeA: "borrada" }),
+    ]);
+    expect(grupos[0].partes[0].sucedido).toBeUndefined();
   });
 });
 
@@ -167,6 +189,82 @@ describe("caracterDe y particularidadDe", () => {
     expect(particularidadDe(parte({ id: "h", caracter: "heredero" }))).toContain(
       "vocación hereditaria",
     );
+  });
+});
+
+describe("rotuloDeRol", () => {
+  it("se calla donde la sección ya lo dice", () => {
+    // Cada lado del pleito agrupa un solo rol: el título de la sección es el
+    // rótulo, y repetirlo en cada tarjeta es decir dos veces lo mismo.
+    expect(rotuloDeRol("actor")).toBe("");
+    expect(rotuloDeRol("demandado")).toBe("");
+    expect(rotuloDeRol("citado_garantia")).toBe("");
+    expect(rotuloDeRol("tercero")).toBe("");
+  });
+
+  it("lo dice donde la sección mete varios roles", () => {
+    expect(rotuloDeRol("perito")).toBe("Perito");
+    expect(rotuloDeRol("sindico")).toBe("Síndico");
+    // El letrado no cae en ningún lado y va a parar a esa misma columna.
+    expect(rotuloDeRol("letrado_contraria")).toBe("Letrado");
+  });
+});
+
+describe("aclaracionDe", () => {
+  it("sin carácter que cambie el lugar, no hay nada que aclarar", () => {
+    expect(aclaracionDe(parte({ id: "d", rol: "demandado" }))).toBe("");
+    expect(aclaracionDe(parte({ id: "p", rol: "demandado", caracter: "persona_juridica" }))).toBe(
+      "",
+    );
+  });
+
+  it("el heredero nombra a la parte fallecida que sucede", () => {
+    const causante = parte({ id: "a", rol: "actor", nombre: "Rosa Díaz" });
+    const heredero = parte({ id: "h", rol: "actor", caracter: "heredero", sucedeA: "a" });
+    expect(aclaracionDe(heredero, causante)).toBe("Heredero de Rosa Díaz");
+  });
+
+  it("sin parte fallecida vinculada, el heredero va solo", () => {
+    // El sucesorio: el heredero promueve y no sucede a nadie en el juicio.
+    expect(aclaracionDe(parte({ id: "h", rol: "actor", caracter: "heredero" }))).toBe("Heredero");
+  });
+
+  it("el carácter que califica y el que reemplaza van con su palabra sola", () => {
+    expect(aclaracionDe(parte({ id: "m", rol: "actor", caracter: "menor" }))).toBe("menor");
+    expect(
+      aclaracionDe(parte({ id: "f", rol: "letrado_contraria", caracter: "defensoria_oficial" })),
+    ).toBe("Defensoría Oficial");
+  });
+});
+
+describe("renglonesDeLetrado", () => {
+  it("un letrado particular es un solo renglón", () => {
+    expect(renglonesDeLetrado(parte({ id: "l", nombre: "Fernando Ledesma" }))).toEqual({
+      nombre: "Fernando Ledesma",
+      debajo: "",
+    });
+  });
+
+  it("la Defensoría se parte en el organismo y cuál es", () => {
+    // Da igual cómo esté cargada: el prefijo se saca si está escrito.
+    const conPrefijo = parte({
+      id: "d",
+      nombre: "Defensoría Oficial Civil de Concepción",
+      caracter: "defensoria_oficial",
+    });
+    const sinPrefijo = parte({
+      id: "e",
+      nombre: "Civil de Concepción",
+      caracter: "defensoria_oficial",
+    });
+    expect(renglonesDeLetrado(conPrefijo)).toEqual({
+      nombre: "Defensoría Oficial",
+      debajo: "Civil de Concepción",
+    });
+    expect(renglonesDeLetrado(sinPrefijo)).toEqual({
+      nombre: "Defensoría Oficial",
+      debajo: "Civil de Concepción",
+    });
   });
 });
 
@@ -219,6 +317,23 @@ describe("agruparPartes: áreas", () => {
       ["demandada", "principal"],
       ["auxiliares", "secundaria"],
     ]);
+  });
+});
+
+describe("llevaLetrado", () => {
+  it("se lo reclama a quien litiga", () => {
+    expect(llevaLetrado("actor")).toBe(true);
+    expect(llevaLetrado("demandado")).toBe(true);
+    expect(llevaLetrado("tercero")).toBe(true);
+  });
+
+  it("no se lo reclama a quien comparece por su cargo", () => {
+    // El síndico y el administrador se presentan en el juicio, pero actúan por
+    // su cargo y no con un patrocinio: "sin letrado" sería un dato faltante
+    // que nunca van a tener.
+    expect(llevaLetrado("sindico")).toBe(false);
+    expect(llevaLetrado("otro")).toBe(false);
+    expect(llevaLetrado("perito")).toBe(false);
   });
 });
 

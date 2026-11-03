@@ -486,6 +486,8 @@ describe("partes del expediente", () => {
     email: " Contacto@Estudio.COM ",
     representaA: "",
     cesoEl: "",
+    fallecioEl: "",
+    sucedeA: "",
     caracter: "por_si",
     comparecencia: "",
     comparecioEl: "",

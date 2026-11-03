@@ -35,6 +35,7 @@ export {
   type FiltroHistoria,
 } from "./historia";
 export {
+  aclaracionDe,
   agruparPartes,
   AREAS_PARTE,
   caracterDe,
@@ -46,6 +47,9 @@ export {
   ladoDeRol,
   ladoDelCliente,
   letradosDe,
+  llevaLetrado,
+  rotuloDeRol,
+  renglonesDeLetrado,
   particularidadDe,
   seNotifica,
   type AreaParte,
