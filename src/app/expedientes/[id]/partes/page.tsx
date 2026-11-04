@@ -1,5 +1,3 @@
-import { UserPlus } from "lucide-react";
-import { Rotulo } from "@/components/Registro";
 import { claseBotonAccion, claseSeparador, Pendientes, Vacio } from "@/components/ui";
 import {
   etiquetaDe,
@@ -12,6 +10,7 @@ import {
 import {
   agruparPartes,
   AREAS_PARTE,
+  colorDeLado,
   faltantesDeCaratula,
   LADOS_PARTE,
   ladoDeRol,
@@ -25,6 +24,7 @@ import { cargarExpediente } from "../cargar";
 import { Desplegable } from "../Desplegable";
 import { AtajosDeLado } from "./AtajosDeLado";
 import { FormularioParte } from "./FormularioParte";
+import { LadoPlegable } from "./LadoPlegable";
 import { TarjetaParte } from "./TarjetaParte";
 
 /**
@@ -32,13 +32,13 @@ import { TarjetaParte } from "./TarjetaParte";
  * qué lado está el cliente (docs/02-expedientes.md §2.14, `case_parties` en
  * docs/06-modelo-de-datos.md).
  *
- * **La nómina es un tablero y no una lista**, porque no se la lee de arriba
- * abajo: se la barre con la vista buscando a alguien. Cada parte es **un ícono
- * con su nombre debajo** y, más chico, quién la lleva y lo poco que haga falta
- * saber antes de abrirla. Entran cuatro por fila en la columna del pleito y dos
- * en la de los auxiliares, así que una nómina de veinte se ve casi entera. Lo
- * demás —documento, domicilios, teléfono y los letrados con sus datos— está
- * adentro, a un clic: la parte se abre en su lugar y se lleva la fila entera.
+ * **La nómina es una lista de renglones**, sin íconos y sin columnas: el nombre
+ * de cada parte, con el apellido primero, y pegado a él, en gris, quién la
+ * lleva —o, en los auxiliares, su función—. Los nombres quedan alineados uno
+ * debajo del otro, que es como se busca a alguien con la vista. Lo demás
+ * —documento, domicilios, teléfono, carácter y los letrados con sus datos—
+ * está adentro, a un clic: el renglón se abre en su lugar y la ficha se
+ * despliega debajo.
  *
  * **La pestaña no lleva encabezado**: el tablero arranca arriba de todo. El
  * cuadro del expediente ya puso la carátula y el número (`layout.tsx`), y una
@@ -47,62 +47,62 @@ import { TarjetaParte } from "./TarjetaParte";
  * tampoco están: decían cuántos y no cuáles, así que para resolverlas había que
  * barrer el tablero igual.
  *
- * **La pantalla se parte en dos áreas**: a la izquierda **el pleito** —los
- * cuatro lados que litigan, uno debajo del otro en el orden en que entran a la
- * causa—, a la derecha **los auxiliares del juzgado**, que intervienen sin
- * litigar. El pleito no lleva título propio: sus lados ya se nombran, y un "EL
- * PLEITO" arriba de todos ellos era un renglón que no agregaba nada.
+ * **La nómina se parte en dos áreas, una debajo de la otra**: arriba **el
+ * pleito** —los cuatro lados que litigan, en el orden en que entran a la
+ * causa— y abajo **los auxiliares del juzgado**, que intervienen sin litigar.
+ * El pleito no lleva título propio: sus lados ya se nombran, y un "EL PLEITO"
+ * arriba de todos ellos era un renglón que no agregaba nada.
  *
- *   PARTE ACTORA                           AUXILIARES DEL JUZGADO
- *     🗡        🗡                            🔬       🤝
- *   Rogel    Maidana                        Juárez   Carrizo
- *                                           PERITO   MEDIADOR
- *   PARTE DEMANDADA
- *     🛡        🛡                            🏛
- *   Swiss   Citrícola                        Paz
- *                                           SÍNDICO
- *   CITADA EN GARANTÍA
- *     ☂
- *   La Segunda
+ *   PARTE ACTORA ›
+ *   Rogel Nicolás  El estudio
+ *   Maidana Gabriela  Suárez Verónica
+ *   ─────────────────────────────────────────────────────────
+ *   PARTE DEMANDADA ›
+ *   Swiss Medical ART  Ferreyra Lucía +1
+ *   ─────────────────────────────────────────────────────────
+ *   CITADA EN GARANTÍA ›
+ *   La Segunda Coop.
+ *   ─────────────────────────────────────────────────────────
+ *   AUXILIARES DEL JUZGADO ›
+ *   Juárez Silvia  Perito
+ *   Carrizo Ana  Mediador
  *
- *   TERCEROS
- *     👥
- *   Maquinarias
+ * (lo que va al lado de cada nombre está en `TarjetaParte.tsx`)
  *
- * (lo que lleva cada parte debajo del nombre está en `TarjetaParte.tsx`)
+ * Las únicas líneas son las que dividen un lado de otro: entre una persona y
+ * la siguiente no hay ninguna, para que no se lea como una planilla.
  *
  * Es el reparto que tiene el juicio en la cabeza del abogado: **quiénes litigan
- * va de un lado y quiénes no, del otro**. La citada en garantía y los terceros
- * litigan —tienen su propia contestación y su propio letrado—, así que están en
- * la columna del pleito y no mezclados con el perito y la mediadora; y cada uno
- * con su lado propio, porque meterlos adentro de "parte demandada" obligaba a
- * leer el rol de cada uno para saber cuál era cuál. El pleito se lleva la
- * columna ancha porque es donde está el juicio, y por lo tanto le entran cuatro
- * por fila contra las dos de los auxiliares.
+ * van primero y quiénes no, después**. La citada en garantía y los terceros
+ * litigan —tienen su propia contestación y su propio letrado—, así que están
+ * con el pleito y no mezclados con el perito y la mediadora; y cada uno con su
+ * lado propio, porque meterlos adentro de "parte demandada" obligaba a leer el
+ * rol de cada uno para saber cuál era cuál.
  *
  * **Adentro de cada área, el lado encabeza su grupo**. Dos cortes distintos
  * sobre la misma nómina: el área contesta "¿esto es el juicio o lo que lo
  * rodea?" y el lado "¿con quién o contra quién?" (`lib/procesal/partes`).
  *
  * **Los letrados no tienen tarjeta propia**: cuelgan de la parte que llevan,
- * que es como se los encuentra cuando hay que llamar a alguien. En el frente
- * de la tarjeta de su representado aparece el nombre del abogado actual, y
- * adentro están todos, con los que cesaron en un bloque aparte.
+ * que es como se los encuentra cuando hay que llamar a alguien. En el renglón
+ * de su representado aparece el abogado actual, al lado de su nombre, y adentro
+ * de la ficha están todos, con los que cesaron en un bloque aparte.
  *
  * **La carátula es el arranque de la nómina, no una copia**: mientras un lado
- * no tenga su parte cargada, la pestaña lo ofrece como una tarjeta punteada
- * que se suma con un clic, parada en la columna del lado que le toca.
+ * no tenga su parte cargada, la pestaña lo ofrece como un renglón punteado
+ * que se suma con un clic, al pie del lado que le toca.
  *
  * El alta se abre con `alt+p`, igual que el formulario del expediente con
  * `alt+e` en Datos: es el mismo `Desplegable` con otra tecla (`atajos.ts`).
  */
 
 /**
- * El lado de la carátula que todavía no está en la nómina, con la misma
- * anatomía que una tarjeta cargada —el rol arriba, el nombre en el medio— y el
- * botón de sumarla donde las otras llevan a su abogado. Es a propósito: dice
- * "acá va a haber una tarjeta y todavía no está", y el borde punteado es el
- * recurso con el que la aplicación marca lo que no es un dato.
+ * El lado de la carátula que todavía no está en la nómina, armado como un
+ * renglón cargado —el nombre primero— y el botón de sumarla donde los otros
+ * llevan a su abogado. Es a propósito: dice "acá va a
+ * haber una parte y todavía no está", y el borde punteado es el recurso con el
+ * que la aplicación marca lo que no es un dato. El nombre se escribe como lo
+ * trae la carátula, entero: no hay cómo saber dónde empieza el apellido.
  */
 function TarjetaDeCaratula({
   faltante,
@@ -112,20 +112,19 @@ function TarjetaDeCaratula({
   expedienteId: string;
 }) {
   return (
-    <li className="min-w-0">
+    <li className="min-w-0 py-1">
       <form
         action={agregarParteDeCaratula}
-        className="flex h-full flex-col items-center gap-0.5 rounded-lg border border-dashed border-linea-fuerte p-1.5 text-center"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-dashed border-linea-fuerte px-2 py-1"
       >
         <input type="hidden" name="expedienteId" value={expedienteId} />
         <input type="hidden" name="rol" value={faltante.rol} />
-        <UserPlus aria-hidden className="size-5 shrink-0 text-zinc-300 dark:text-zinc-700" />
-        <p className="min-w-0 text-sm font-semibold leading-snug text-zinc-700 dark:text-zinc-300">
+        <p className="min-w-0 text-sm font-medium leading-snug text-zinc-500 dark:text-zinc-400">
           {faltante.nombre}
         </p>
         <button
           type="submit"
-          className={`${claseBotonAccion} text-[11px]`}
+          className={`${claseBotonAccion} justify-self-start text-[11px]`}
           title={`Sumar a "${faltante.nombre}" a la nómina como ${etiquetaDe(ROLES_PARTE, faltante.rol).toLowerCase()}`}
         >
           Sumar a la nómina
@@ -136,16 +135,16 @@ function TarjetaDeCaratula({
 }
 
 /**
- * Una columna del tablero: el área con sus lados, cada uno con sus tarjetas.
+ * Una columna de la pantalla: el área con sus lados, cada uno con su tablilla.
  *
  * Recorre **los lados del área** y no los grupos que trajo `agruparPartes`,
  * porque un lado puede estar vacío y tener igual algo que mostrar: la parte
  * actora que todavía no se cargó y que la carátula ofrece sumar. Un lado sin
- * tarjetas ni ofrecimiento no se dibuja.
+ * partes ni ofrecimiento no se dibuja.
  *
- * Los lados llevan su rótulo y no un recuadro propio: la columna ya es el
- * recuadro, y encerrar cada lado adentro habría sido meter cuadros en cuadros,
- * que es lo que la ficha de Datos dejó de hacer.
+ * Los lados llevan su cabecera y no un recuadro propio: encerrar cada lado
+ * habría sido meter cuadros en cuadros, que es lo que la ficha de Datos dejó
+ * de hacer.
  */
 function Area({
   area,
@@ -180,96 +179,61 @@ function Area({
   return (
     <section className="min-w-0">
       {/*
-        El área del pleito no lleva título: cada lado adentro ya dice qué es
-        —"parte actora", "parte demandada"— y un "EL PLEITO" arriba de todos
-        ellos era un renglón que no agregaba nada (`AREAS_PARTE`). Los
-        auxiliares sí lo llevan, porque su único lado se llama igual que el
-        área y por eso tiene el rótulo oculto.
-      */}
-      {etiqueta ? (
-        <h3 className="rotulo text-zinc-500 dark:text-zinc-500">{etiqueta}</h3>
-      ) : null}
-
-      {/*
         **Una línea separa un lado del siguiente.** Cuatro grupos de partes uno
-        abajo del otro, con el rótulo de cada uno en versalitas grises, se leían
-        como una sola lista larga: el rótulo decía dónde empezaba cada sección
-        pero nada decía dónde terminaba la anterior. La línea es la misma de
-        `claseSeparador`, que es con la que la aplicación separa bloques adentro
-        de un cuadro, y por eso no hace falta ningún recuadro nuevo.
+        abajo del otro se leían como una sola lista larga: el rótulo decía
+        dónde empezaba cada sección pero nada decía dónde terminaba la
+        anterior. La línea es la misma de `claseSeparador`, que es con la que
+        la aplicación separa bloques adentro de un cuadro.
       */}
-      <div className={etiqueta ? "mt-2" : ""}>
-        {lados.map((lado, indice) => (
-          <div key={lado.lado} className={`group/lado ${indice > 0 ? claseSeparador : ""}`}>
-            {/*
-              El rótulo del lado solo aparece donde hay más de uno: en la
-              columna de los auxiliares el área y el lado se llaman igual, y
-              escribirlo dos veces seguidas no agrega nada.
+      {lados.map((lado, indice) => (
+        /*
+          **Cada lado se pliega y se despliega** (`LadoPlegable`), con un clic
+          en su nombre o con su atajo. La cabecera es el nombre del lado, sin
+          títulos de columna: lo que acompaña a cada parte va pegado a su
+          nombre, así que no hay columnas que titular.
 
-              Al lado del rótulo, **la pista de su atajo**, que aparece al pasar
-              el mouse por el grupo: es la misma convención que el `alt+p` del
-              alta y el `alt+e` de Datos —el atajo se muestra donde está lo que
-              abre, y solo cuando se lo busca—.
-            */}
-            {lados.length > 1 ? (
-              <Rotulo className="block text-zinc-400 dark:text-zinc-600">
-                {lado.etiqueta}
-                {atajoDeLado(lado.lado) ? (
-                  <span
-                    aria-hidden
-                    className="rotulo-tecla ml-2 text-zinc-300 opacity-0 transition-opacity duration-150 group-hover/lado:opacity-100 dark:text-zinc-700"
-                  >
-                    {atajoDeLado(lado.lado)}
-                  </span>
-                ) : null}
-              </Rotulo>
-            ) : null}
-            {/*
-              Las partes se acomodan solas: `auto-fill` mete las que entren en
-              el ancho que tenga la columna —cuatro en el área del pleito, dos
-              en la de los auxiliares, una en un teléfono— sin que la pestaña
-              tenga que saber cuántas ni en qué pantalla está. La que se abre se
-              lleva la fila entera (`.tablero-partes` en `globals.css`).
+          El color del lado va en la flecha de su cabecera y en ningún otro
+          lado de la nómina: un círculo en cada persona repetía lo mismo tantas
+          veces como partes hubiera.
 
-              El `data-lado` es lo que leen los atajos para saber qué partes
-              recorrer con `alt+a`, `alt+d`, `alt+g` y `alt+t`
-              (`AtajosDeLado.tsx`): el orden del foco es el de la pantalla, sin
-              una segunda lista que mantener al día.
-            */}
-            <ul
-              data-lado={lado.lado}
-              className={`tablero-partes grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-2 ${
-                lados.length > 1 ? "mt-1.5" : ""
-              }`}
-            >
-              {lado.filas.map((fila) => (
-                <TarjetaParte
-                  key={fila.parte.id}
-                  fila={fila}
-                  expedienteId={expedienteId}
-                  representables={representables.filter(
-                    (candidata) => candidata.id !== fila.parte.id,
-                  )}
-                  estudio={estudio}
-                  diaDeHoy={diaDeHoy}
-                />
-              ))}
-              {/*
-                La tarjeta punteada de la carátula va al pie de su lado,
-                después de lo que sí está cargado: es una invitación a
-                completar la nómina, no una parte más.
-              */}
-              {lado.faltantes.map((faltante) => (
-                <TarjetaDeCaratula
-                  key={faltante.rol}
-                  faltante={faltante}
-                  expedienteId={expedienteId}
-                />
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+          El pleito no necesita un título de área, porque sus lados se nombran;
+          el lado único de los auxiliares lleva el del área, que dice qué hacen
+          ahí.
+
+          Un renglón por parte, **sin línea entre una persona y la siguiente**:
+          con una raya debajo de cada renglón la nómina parecía una planilla de
+          cálculo. Las únicas líneas son las que dividen un lado del otro.
+        */
+        <LadoPlegable
+          key={lado.lado}
+          lado={lado.lado}
+          titulo={lados.length > 1 ? lado.etiqueta : etiqueta || lado.etiqueta}
+          color={colorDeLado(lado.lado)}
+          atajo={atajoDeLado(lado.lado)}
+          cantidad={lado.filas.length}
+          separado={indice > 0 ? claseSeparador : ""}
+        >
+          {lado.filas.map((fila) => (
+            <TarjetaParte
+              key={fila.parte.id}
+              fila={fila}
+              expedienteId={expedienteId}
+              representables={representables.filter((candidata) => candidata.id !== fila.parte.id)}
+              estudio={estudio}
+              diaDeHoy={diaDeHoy}
+              conAbogado={area !== "secundaria"}
+            />
+          ))}
+          {/*
+            El renglón punteado de la carátula va al pie de su lado, después de
+            lo que sí está cargado: es una invitación a completar la nómina, no
+            una parte más.
+          */}
+          {lado.faltantes.map((faltante) => (
+            <TarjetaDeCaratula key={faltante.rol} faltante={faltante} expedienteId={expedienteId} />
+          ))}
+        </LadoPlegable>
+      ))}
     </section>
   );
 }
@@ -298,27 +262,26 @@ export default async function PartesExpedientePage({
       ) : null}
 
       {/*
-        El tablero. En pantalla angosta las dos áreas se apilan —primero el
-        pleito, después lo que lo rodea—, que es el mismo orden de lectura; a
-        partir de `lg` se ponen una al lado de la otra y el pleito se lleva la
-        columna ancha.
-
-        Los dos tramos van en `minmax(0, …)` y no en `1.7fr` pelado. Un `fr`
-        suelto es `minmax(auto, 1.7fr)`: su mínimo es el **ancho mínimo del
-        contenido**, así que la columna se estira para que entre lo más ancho
-        que tenga adentro —la ficha de una tarjeta abierta, con su formulario—
-        y el tablero entero se va de la pantalla, con scroll lateral. Con el
-        mínimo en cero la columna se queda del tamaño que le toca y lo de
-        adentro se acomoda.
-      */}
-      {/*
-        Los atajos que recorren el tablero con el teclado. No dibuja nada: va
+        Los atajos que recorren la nómina con el teclado. No dibuja nada: va
         acá, al lado de lo que recorre, y no en el cuadro del expediente,
         porque son atajos de esta pestaña (`AtajosDeLado.tsx`).
       */}
       <AtajosDeLado />
 
-      <div className="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      {/*
+        Las dos áreas, **una debajo de la otra**: primero el pleito y abajo los
+        auxiliares del juzgado. Al costado, los auxiliares se llevaban una
+        columna angosta donde sus tres columnas no entraban, y competían con el
+        pleito por la mirada cuando lo que se viene a leer es el pleito. Abajo
+        quedan en el orden de importancia y con las mismas columnas que los
+        lados de arriba.
+
+        El área de abajo se separa con la misma línea que divide un lado de
+        otro (`claseSeparador`). Va como selector de hermano y no como clase
+        de cada área porque un área sin partes no se dibuja, y la línea tiene
+        que aparecer solo entre dos que sí estén.
+      */}
+      <div className="[&>section+section]:mt-4 [&>section+section]:border-t [&>section+section]:border-linea [&>section+section]:pt-4">
         {AREAS_PARTE.map((area) => (
           <Area
             key={area.area}
@@ -362,9 +325,10 @@ export default async function PartesExpedientePage({
           "Encabezado de escrito armado con esta nómina: carátula, partes, documentos y domicilios constituidos, sin volver a tipearlos.",
           "Cédulas y notificaciones a los domicilios electrónicos cargados.",
           "La comparecencia y el cese del letrado escritos por la historia: hoy los dos se cargan a mano, aunque la presentación y la renuncia ya son entradas del expediente.",
-          "Caracteres y sus particularidades a confirmar con el abogado, y los que falten: cesionario, subrogante, concursado.",
+          "Caracteres y sus particularidades a confirmar con el abogado, sobre todo los recién sumados (causante, acreedor, apoderado civil, cesionario, curador, desistido, fallido, excluido del proceso), y los que falten: subrogante, concursado.",
           "Aseguradoras con su póliza y su cobertura, y peritos con su especialidad y su matrícula.",
-          "Cómo se vuelve a ver de qué lado está cada parte, y quién es el cliente: lo dijo una pastilla, después el filete del borde y después el color del ícono, y con todos los íconos iguales quedó solo adentro de la ficha (la regla sigue en lib/procesal/partes).",
+          "Cómo se vuelve a ver quién es el cliente: el lado ya lo dice su sección, pero cuál de las partes de ese lado es el cliente quedó solo adentro de la ficha.",
+          "El color de cada lado en la historia del expediente, al lado de cada escrito, para ver de un vistazo de qué lado viene.",
           "La sucesión indivisa es el único carácter sin ejemplo cargado: aparece cuando se demanda al acervo de alguien que murió, así que va en otro expediente y no en estos dos.",
           "El curador de una parte con capacidad restringida, que hoy va en las notas: la nómina solo sabe colgar letrados de una parte, y un curador no es un letrado.",
         ]}

@@ -495,6 +495,14 @@ export type CaracterParte =
   | "citado_coactivo"
   | "citado_voluntario"
   | "litisconsorte"
+  | "causante"
+  | "acreedor"
+  | "apoderado_civil"
+  | "cesionario"
+  | "curador"
+  | "desistido"
+  | "fallido"
+  | "excluido"
   | "patrocinante"
   | "apoderado"
   | "otro";
@@ -511,13 +519,23 @@ export type CaracterParte =
  * rol. El perito no comparece, lo designa el juzgado; el letrado tampoco, es el
  * que hace comparecer a su representado.
  */
-export type Comparecencia = "pendiente" | "comparecio" | "rebelde" | "no_corresponde";
+export type Comparecencia =
+  | "pendiente"
+  | "comparecio"
+  | "incontestada"
+  | "rebelde"
+  | "no_corresponde";
 
 /** Una parte del expediente. */
 export interface Parte {
   id: string;
   expedienteId: string;
   rol: RolParte;
+  /**
+   * El nombre de pila de una persona humana, o la razón social o la
+   * denominación completa de una persona jurídica o un organismo, que no tienen
+   * apellido.
+   */
   nombre: string;
   /** DNI o CUIT, como lo escribe el abogado. */
   documento: string;
@@ -552,8 +570,25 @@ export interface Parte {
    * tienen, y quien los lee resuelve el valor faltante (`lib/procesal/partes`).
    */
 
+  /**
+   * El apellido de una persona humana, aparte del nombre, porque la nómina se
+   * lee **por apellido**: "Rogel Nicolás", como en una carátula o en una lista
+   * del juzgado, y se ordena por él. Va en un campo propio y no se adivina
+   * partiendo el nombre: "María de los Ángeles Pérez Lobo" no tiene una regla
+   * que diga dónde termina un pedazo y empieza el otro, y una razón social no
+   * tiene apellido. Vacío en las personas jurídicas, los organismos y las
+   * partes cargadas antes de que existiera, que se muestran con el nombre tal
+   * cual (`nombreDeNomina` en `lib/procesal/partes`).
+   */
+  apellido?: string;
   /** Con qué carácter interviene. Si falta, `por_si`. */
   caracter?: CaracterParte;
+  /**
+   * Si la parte **se representa a sí misma**: es abogada y litiga en causa
+   * propia. Entonces la nómina la pone a ella en la columna del abogado, con el
+   * carácter "por derecho propio", en lugar de reclamarle un letrado.
+   */
+  causaPropia?: boolean;
   /** Si se presentó en el juicio. Si falta, lo que corresponda a su rol. */
   comparecencia?: Comparecencia;
   /** Fecha de la presentación. Vacía mientras no haya comparecido. */
@@ -762,6 +797,66 @@ export const CARACTERES_PARTE: ReadonlyArray<{
       "Si el litisconsorcio es necesario, los actos del juicio los tienen que alcanzar a todos: no se puede avanzar con uno solo notificado.",
   },
   /*
+   * Los caracteres que el abogado pidió sumar para la columna **Carácter** de la
+   * nómina. Unos dicen de dónde le viene el lugar (cesionario, acreedor), otros
+   * en qué situación quedó (fallido, desistido, excluido del proceso). Las
+   * denominaciones y sus particularidades están **[a confirmar]**.
+   */
+  {
+    valor: "causante",
+    etiqueta: "Causante",
+    detalle: "La parte que falleció y de quien vienen los herederos.",
+    particularidad:
+      "El juicio se suspende hasta que comparezcan los herederos o se los declare rebeldes. Lo que presentó en vida sigue valiendo.",
+  },
+  {
+    valor: "acreedor",
+    etiqueta: "Acreedor",
+    detalle: "Interviene por un crédito: en un concurso, una ejecución o un sucesorio.",
+    particularidad: "Tiene que acreditar el crédito que invoca para que se lo tenga por parte.",
+  },
+  {
+    valor: "apoderado_civil",
+    etiqueta: "Apoderado civil",
+    detalle: "Actúa por otra persona con un poder, sin ser su abogado.",
+    particularidad:
+      "Hay que agregar el poder y verificar que alcance para el acto. Necesita igualmente patrocinio letrado.",
+  },
+  {
+    valor: "cesionario",
+    etiqueta: "Cesionario",
+    detalle: "Recibió por cesión el derecho litigioso de una parte.",
+    particularidad:
+      "La cesión tiene que estar notificada y agregada; según el caso, la contraria puede oponerse a que el cedente se aparte.",
+  },
+  {
+    valor: "curador",
+    etiqueta: "Curador",
+    detalle: "Representa a una persona declarada incapaz o con capacidad restringida.",
+    particularidad:
+      "Actúa dentro de las facultades que fijó la sentencia que lo designó, con intervención del Ministerio Público.",
+  },
+  {
+    valor: "desistido",
+    etiqueta: "Desistido",
+    detalle: "Se desistió de la acción o del proceso respecto de esta parte.",
+    particularidad:
+      "Ya no se la notifica ni corre plazo para ella. Si fue desistimiento del proceso, puede volver a demandarse.",
+  },
+  {
+    valor: "fallido",
+    etiqueta: "Fallido",
+    detalle: "Se le declaró la quiebra.",
+    particularidad:
+      "Queda desapoderado: en lo patrimonial actúa el síndico, y los juicios de contenido patrimonial pueden atraerse al juzgado de la quiebra.",
+  },
+  {
+    valor: "excluido",
+    etiqueta: "Excluido del proceso",
+    detalle: "El juzgado lo apartó del juicio.",
+    particularidad: "No se lo notifica más. Conviene dejar en las notas la resolución que lo excluyó.",
+  },
+  /*
    * Los dos caracteres del letrado, que contestan **con qué firma**: el
    * patrocinante asiste a la parte, que firma con él; el apoderado tiene poder
    * y firma solo, en nombre de ella. Es lo primero que hay que saber de un
@@ -817,6 +912,17 @@ export const COMPARECENCIAS: ReadonlyArray<{
     valor: "comparecio",
     etiqueta: "Compareció",
     detalle: "Se presentó y constituyó domicilio en el expediente.",
+  },
+  {
+    /*
+     * Fue citada y no contestó en el plazo: se le dio por decaído el derecho
+     * a contestar. No es lo mismo que la rebeldía, que requiere que no haya
+     * comparecido en absoluto y la declara el juzgado a pedido de parte; una
+     * demandada puede presentarse tarde y no haber contestado.
+     */
+    valor: "incontestada",
+    etiqueta: "Demanda incontestada",
+    detalle: "Fue citada y no contestó la demanda en el plazo.",
   },
   {
     valor: "rebelde",

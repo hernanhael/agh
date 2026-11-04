@@ -5,6 +5,7 @@ import {
   ROLES_PARTE,
   type Parte,
 } from "@/lib/datos/tipos";
+import { nombreDeNomina } from "@/lib/procesal";
 import { agregarParte, guardarParte } from "../../acciones";
 
 /**
@@ -37,12 +38,27 @@ export function FormularioParte({
       {parte ? <input type="hidden" name="id" value={parte.id} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo etiqueta="Nombre" className="sm:col-span-2">
+        {/*
+          El apellido va primero y aparte porque la nómina se lee por apellido
+          —"Rogel Nicolás"— y no hay regla para partir un nombre entero en
+          dos. Una persona jurídica deja el apellido vacío y escribe su razón
+          social en el nombre.
+        */}
+        <Campo etiqueta="Apellido" ayuda="Vacío si es una persona jurídica o un organismo.">
+          <input
+            type="text"
+            name="apellido"
+            defaultValue={parte?.apellido}
+            placeholder="Rogel"
+            className={claseEntrada}
+          />
+        </Campo>
+        <Campo etiqueta="Nombre o razón social">
           <input
             type="text"
             name="nombre"
             defaultValue={parte?.nombre}
-            placeholder="Nicolás Rogel"
+            placeholder="Nicolás"
             required
             className={claseEntrada}
           />
@@ -155,7 +171,7 @@ export function FormularioParte({
             <option value="">A nadie</option>
             {representables.map((candidata) => (
               <option key={candidata.id} value={candidata.id}>
-                {candidata.nombre}
+                {nombreDeNomina(candidata)}
               </option>
             ))}
           </select>
@@ -204,7 +220,7 @@ export function FormularioParte({
             <option value="">A nadie</option>
             {representables.map((candidata) => (
               <option key={candidata.id} value={candidata.id}>
-                {candidata.nombre}
+                {nombreDeNomina(candidata)}
               </option>
             ))}
           </select>
@@ -253,6 +269,23 @@ export function FormularioParte({
         <span className="text-xs text-zinc-600 dark:text-zinc-400">
           Es el cliente del estudio en este expediente. Hay uno solo: marcar a esta parte se lo
           quita a cualquier otra.
+        </span>
+      </label>
+
+      {/*
+        La parte que es abogada y litiga en causa propia: la nómina la pone a
+        ella en la columna del abogado, "por derecho propio", en lugar de
+        reclamarle un letrado.
+      */}
+      <label className="mt-2 flex items-start gap-2">
+        <input
+          type="checkbox"
+          name="causaPropia"
+          defaultChecked={parte?.causaPropia}
+          className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 text-acento focus:ring-acento dark:border-zinc-700"
+        />
+        <span className="text-xs text-zinc-600 dark:text-zinc-400">
+          Se representa a sí misma: es abogada y litiga por derecho propio, sin otro letrado.
         </span>
       </label>
 

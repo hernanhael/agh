@@ -26,7 +26,10 @@ import {
 export interface EntradaParte {
   expedienteId: string;
   rol: RolParte;
+  /** El nombre de pila, o la razón social de una persona jurídica. */
   nombre: string;
+  /** El apellido de una persona humana. Vacío en las personas jurídicas. */
+  apellido: string;
   documento: string;
   domicilioReal: string;
   domicilioElectronico: string;
@@ -45,6 +48,8 @@ export interface EntradaParte {
   comparecencia: Comparecencia | "";
   comparecioEl: string;
   esCliente: boolean;
+  /** Si es abogada y se representa a sí misma. */
+  causaPropia: boolean;
   notas: string;
 }
 
@@ -95,6 +100,7 @@ function normalizar(entrada: EntradaParte, acentuar: boolean) {
   return {
     rol: rolValido(entrada.rol),
     nombre: nombrePropio(entrada.nombre, opciones),
+    apellido: nombrePropio(entrada.apellido, opciones),
     documento: documento(entrada.documento),
     // El domicilio es un nombre de calle y de ciudad: va como título, que es lo
     // que deja "San Miguel de Tucumán" con la partícula en minúscula.
@@ -103,6 +109,7 @@ function normalizar(entrada: EntradaParte, acentuar: boolean) {
     telefono: normalizarEspacios(entrada.telefono),
     email: minusculas(entrada.email),
     esCliente: entrada.esCliente,
+    causaPropia: entrada.causaPropia,
     notas: oracion(entrada.notas),
     caracter: caracterValido(entrada.caracter),
     comparecencia: comparecenciaValida(entrada.comparecencia),
@@ -187,7 +194,9 @@ export async function crearParte(entrada: EntradaParte): Promise<Resultado<Parte
     if (!expediente) return fallo<Parte>("No se encontró el expediente.");
 
     const campos = normalizar(entrada, datos.estudio.correccionDeTildes);
-    if (!campos.nombre) return fallo<Parte>("Escribí el nombre de la parte.");
+    if (!campos.nombre && !campos.apellido) {
+      return fallo<Parte>("Escribí el nombre de la parte.");
+    }
 
     const marca = ahora();
     const representaA = representaValido(datos, expediente.id, entrada.representaA, "");
@@ -222,7 +231,9 @@ export async function actualizarParte(
     if (!parte) return fallo<Parte>("No se encontró la parte.");
 
     const campos = normalizar(entrada, datos.estudio.correccionDeTildes);
-    if (!campos.nombre) return fallo<Parte>("Escribí el nombre de la parte.");
+    if (!campos.nombre && !campos.apellido) {
+      return fallo<Parte>("Escribí el nombre de la parte.");
+    }
 
     const representaA = representaValido(
       datos,
@@ -263,7 +274,11 @@ export async function sumarParteDeCaratula(
   return crearParte({
     expedienteId,
     rol,
+    // La carátula trae el nombre en un solo texto y no hay cómo saber dónde
+    // empieza el apellido, así que entra entero y el abogado lo parte al
+    // completar los datos.
     nombre,
+    apellido: "",
     documento: "",
     domicilioReal: "",
     domicilioElectronico: "",
@@ -281,6 +296,7 @@ export async function sumarParteDeCaratula(
     // La carátula dice de qué lado está el estudio, así que si el lado que se
     // suma es el del cliente, la parte nace marcada como tal.
     esCliente: expediente.rolCliente === rol,
+    causaPropia: false,
     notas: "",
   });
 }
@@ -305,6 +321,6 @@ export async function eliminarParte(id: string): Promise<Resultado<string>> {
         parte.actualizadoEn = ahora();
       }
     }
-    return correcto(borrada.nombre);
+    return correcto([borrada.nombre, borrada.apellido ?? ""].filter(Boolean).join(" "));
   });
 }

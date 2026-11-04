@@ -6,6 +6,7 @@ import { Encabezado } from "@/components/ui";
 import { hoy, identificador } from "@/lib/datos";
 import { situacionCaducidad } from "@/lib/procesal";
 import { cargarExpediente } from "./cargar";
+import { LadosPlegados } from "./LadosPlegados";
 import { PestanasExpediente } from "./PestanasExpediente";
 
 /**
@@ -61,7 +62,14 @@ export default async function ExpedienteLayout({ children, params }: LayoutProps
 
       <div className="rounded-lg border border-linea bg-superficie">
         <PestanasExpediente expedienteId={expediente.id} />
-        <div className="p-5">{children}</div>
+        {/*
+          Lo que se recuerda mientras se trabaja en este expediente y se olvida
+          al salir al listado: qué lados de la nómina están plegados
+          (`LadosPlegados`). La `key` hace que cada expediente empiece de cero.
+        */}
+        <LadosPlegados key={expediente.id}>
+          <div className="p-5">{children}</div>
+        </LadosPlegados>
       </div>
     </div>
   );

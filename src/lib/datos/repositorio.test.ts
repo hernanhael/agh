@@ -479,6 +479,8 @@ describe("partes del expediente", () => {
     expedienteId: "",
     rol: "demandado" as const,
     nombre: "ELECTRONICA DEL NORTE SRL",
+    apellido: "",
+    causaPropia: false,
     documento: " 30-12345678-9 ",
     domicilioReal: "san martin 450, san miguel de tucuman",
     domicilioElectronico: " 20-25123456-7 ",

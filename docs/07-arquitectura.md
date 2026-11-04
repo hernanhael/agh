@@ -85,10 +85,13 @@ app/
     nuevo/           alta con previsualización de carátula
     [id]/            ficha por pestañas: una ruta por pestaña (02-expedientes.md §2.13)
       datos/           metadatos del expediente y formulario de edición
-      partes/          nómina de partes: cada parte es un ícono con su nombre;
-                       el pleito en una columna —actora, demandada, citada y
-                       terceros— y los auxiliares en la otra, con los atajos
-                       que la recorren por lado (§2.14)
+      partes/          nómina de partes: un renglón por parte con su abogado
+                       al lado; el pleito —actora, demandada, citada y
+                       terceros— y abajo los auxiliares, cada lado plegable
+                       con su atajo (§2.14)
+    [id]/LadosPlegados.tsx  qué lados de la nómina están plegados: vive en el
+                       layout, así que dura mientras se trabaja en el
+                       expediente y se olvida al salir al listado
       agenda/          audiencia fijada y plazo de caducidad corriendo
       historia/        línea de tiempo del expediente, recorrido por las etapas
                        y editor de escritos (§2.3 y §2.5)
@@ -165,7 +168,7 @@ Hasta que esté montado Supabase, los repositorios de `lib/datos/` guardan en un
 
 El barril `lib/datos/index.ts` reexporta todo y es **del servidor**. Los componentes de cliente importan de `lib/datos/tipos`, `lib/datos/filtros`, `lib/procesal` y `lib/escritos`.
 
-Los componentes de cliente se cuentan con los dedos y cada uno lo es por una razón concreta: el **listado de expedientes**, que filtra mientras se tipea; el **editor de escritos**, donde la hoja se tiene que ver cambiar mientras se escribe; la **nota del expediente**, que necesita selección de texto; y el **desplegable con atajo** de Datos y Partes, que necesita el teclado. Todo lo demás son formularios HTML con una acción de servidor, y las tarjetas de la nómina se abren con un `<details>`, sin JavaScript propio.
+Los componentes de cliente se cuentan con los dedos y cada uno lo es por una razón concreta: el **listado de expedientes**, que filtra mientras se tipea; el **editor de escritos**, donde la hoja se tiene que ver cambiar mientras se escribe; la **nota del expediente**, que necesita selección de texto; el **desplegable con atajo** de Datos y Partes, que necesita el teclado; y en la nómina de partes, **los lados plegables y sus atajos** (`LadoPlegable`, `AtajosDeLado`), que recuerdan qué lado está plegado mientras se trabaja en el expediente (`LadosPlegados`, en el layout) y mueven el foco con el teclado. Todo lo demás son formularios HTML con una acción de servidor, y cada parte de la nómina se abre con un `<details>`, sin JavaScript propio.
 
 ### 3.3 Reglas procesales
 

@@ -52,8 +52,17 @@ export type AreaParte = "principal" | "secundaria";
  * de cada tarjeta para saber cuál era cuál, que es justo lo que los lados
  * vinieron a evitar.
  *
- * **En la segunda columna quedan los auxiliares del juzgado**: el síndico, el
+ * **Debajo del pleito quedan los auxiliares del juzgado**: el síndico, el
  * perito, la mediadora y cualquier otro que intervenga sin litigar.
+ *
+ * **Cada lado tiene su color** (`color`): el del círculo que va adelante del
+ * nombre de cada parte en la nómina, y el que la va a identificar en la
+ * historia del expediente, para ver de un vistazo de qué lado viene cada
+ * escrito. Es un color por lado y no por persona, a pedido del abogado: lo que
+ * se quiere ver en la historia es si lo presentó la actora o la demandada, no
+ * cuál de los tres actores. Azul la actora y naranja la demandada, que son los
+ * dos que más se cruzan y tienen que distinguirse sin pensar; violeta la
+ * citada, amarillo los terceros y gris los auxiliares, que no litigan.
  *
  * `letrado_contraria` no figura en ninguna lista: no se muestra como una fila
  * propia sino colgando de la parte que representa. Si quedó sin representado,
@@ -65,23 +74,63 @@ export const LADOS_PARTE: ReadonlyArray<{
   etiqueta: string;
   area: AreaParte;
   roles: ReadonlyArray<RolParte>;
+  /** El color del lado, para el círculo de cada parte. */
+  color: string;
 }> = [
-  { lado: "actora", etiqueta: "Parte actora", area: "principal", roles: ["actor"] },
-  { lado: "demandada", etiqueta: "Parte demandada", area: "principal", roles: ["demandado"] },
+  {
+    lado: "actora",
+    etiqueta: "Parte actora",
+    area: "principal",
+    roles: ["actor"],
+    color: "#3b82f6",
+  },
+  {
+    lado: "demandada",
+    etiqueta: "Parte demandada",
+    area: "principal",
+    roles: ["demandado"],
+    color: "#f97316",
+  },
   {
     lado: "citada",
     etiqueta: "Citada en garantía",
     area: "principal",
     roles: ["citado_garantia"],
+    color: "#8b5cf6",
   },
-  { lado: "terceros", etiqueta: "Terceros", area: "principal", roles: ["tercero"] },
+  {
+    lado: "terceros",
+    etiqueta: "Terceros",
+    area: "principal",
+    roles: ["tercero"],
+    color: "#eab308",
+  },
   {
     lado: "auxiliares",
     etiqueta: "Auxiliares",
     area: "secundaria",
     roles: ["sindico", "perito", "mediador", "otro"],
+    color: "#71717a",
   },
 ];
+
+/** El color de un lado (`LADOS_PARTE`). */
+export function colorDeLado(lado: LadoParte): string {
+  return LADOS_PARTE.find((grupo) => grupo.lado === lado)?.color ?? "#71717a";
+}
+
+/**
+ * El color con el que se identifica a una parte: el de su lado. **El letrado
+ * lleva el de su representado**, porque el escrito que firma el abogado de
+ * Rogel es un escrito de la actora; es lo que va a necesitar la historia, que
+ * tiene escritos firmados por letrados y no por partes.
+ */
+export function colorDeParte(parte: Parte, partes: ReadonlyArray<Parte>): string {
+  const representado = parte.representaA
+    ? partes.find((candidata) => candidata.id === parte.representaA)
+    : undefined;
+  return colorDeLado(ladoDeRol((representado ?? parte).rol));
+}
 
 /** Las dos áreas con su título, en el orden en que se leen. */
 export const AREAS_PARTE: ReadonlyArray<{ area: AreaParte; etiqueta: string }> = [
@@ -137,6 +186,35 @@ export interface GrupoPartes {
   partes: ParteConRepresentantes[];
 }
 
+/**
+ * El nombre como se lo lee **en la nómina**: el apellido primero y el nombre
+ * después —"Rogel Nicolás"—, que es como se lo busca con la vista en una
+ * columna. **Sin coma en el medio**: en un renglón de la nómina la coma no
+ * aclaraba nada y ensuciaba la columna, y el apellido ya se distingue por ir
+ * primero.
+ *
+ * Sin apellido se devuelve el nombre tal cual: una persona jurídica o un
+ * organismo no tienen apellido que adelantar ("Swiss Medical ART"), y una
+ * parte cargada antes de que el apellido fuera un campo propio no se parte a
+ * ojo, porque no hay regla que diga dónde termina el nombre de "María de los
+ * Ángeles Pérez Lobo".
+ */
+export function nombreDeNomina(parte: Pick<Parte, "nombre" | "apellido">): string {
+  const apellido = parte.apellido?.trim() ?? "";
+  const nombre = parte.nombre.trim();
+  if (!apellido) return nombre;
+  return nombre ? `${apellido} ${nombre}` : apellido;
+}
+
+/**
+ * El nombre **en el orden en que se dice**: "Nicolás Rogel". Es el que va en
+ * una frase —"heredero de Rosa Díaz", "Quitar a Nicolás Rogel de la nómina"—,
+ * donde el apellido adelante se leería como una lista y no como una persona.
+ */
+export function nombreCompleto(parte: Pick<Parte, "nombre" | "apellido">): string {
+  return [parte.nombre.trim(), parte.apellido?.trim() ?? ""].filter(Boolean).join(" ");
+}
+
 /** El lado en el que se muestra un rol. */
 export function ladoDeRol(rol: RolParte): LadoParte {
   return LADOS_PARTE.find((grupo) => grupo.roles.includes(rol))?.lado ?? "auxiliares";
@@ -157,7 +235,8 @@ function compararPartes(a: Parte, b: Parte): number {
   return (
     Number(b.esCliente) - Number(a.esCliente) ||
     indice(a) - indice(b) ||
-    a.nombre.localeCompare(b.nombre, "es")
+    // Alfabético por apellido, que es como se lee la nómina (`nombreDeNomina`).
+    nombreDeNomina(a).localeCompare(nombreDeNomina(b), "es")
   );
 }
 
@@ -314,7 +393,7 @@ export function aclaracionDe(parte: Parte, sucedido?: Parte): string {
 
   const palabra = caracter.palabraEnElLugar ?? caracter.etiqueta;
   if (caracter.enElLugar !== "sucede") return palabra;
-  return sucedido ? `${palabra} de ${sucedido.nombre}` : palabra;
+  return sucedido ? `${palabra} de ${nombreCompleto(sucedido)}` : palabra;
 }
 
 /**
@@ -329,7 +408,7 @@ export function aclaracionDe(parte: Parte, sucedido?: Parte): string {
  */
 export function renglonesDeLetrado(letrado: Parte): { nombre: string; debajo: string } {
   if (caracterDe(letrado) !== "defensoria_oficial") {
-    return { nombre: letrado.nombre, debajo: "" };
+    return { nombre: nombreDeNomina(letrado), debajo: "" };
   }
   const cual = letrado.nombre.replace(/^\s*defensor[íi]a(\s+oficial)?\s*/i, "").trim();
   return { nombre: "Defensoría Oficial", debajo: cual };
@@ -436,6 +515,13 @@ export function faltantesDeCaratula(
   return lados.filter((lado) => {
     if (!lado.nombre) return false;
     const buscado = normalizarParaBuscar(lado.nombre);
-    return !partes.some((parte) => normalizarParaBuscar(parte.nombre) === buscado);
+    // La carátula puede nombrar a la persona en cualquiera de los dos órdenes
+    // —"Nicolás Rogel" o "Rogel Nicolás"— y la nómina la guarda partida en
+    // nombre y apellido, así que se la busca de las dos maneras.
+    return !partes.some((parte) =>
+      [nombreCompleto(parte), `${parte.apellido ?? ""} ${parte.nombre}`].some(
+        (forma) => normalizarParaBuscar(forma) === buscado,
+      ),
+    );
   });
 }

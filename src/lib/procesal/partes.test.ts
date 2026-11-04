@@ -5,6 +5,8 @@ import {
   agruparPartes,
   caracterDe,
   clienteDeLaNomina,
+  colorDeLado,
+  colorDeParte,
   comparece,
   comparecenciaDe,
   faltantesDeCaratula,
@@ -12,6 +14,8 @@ import {
   ladoDelCliente,
   letradosDe,
   llevaLetrado,
+  nombreCompleto,
+  nombreDeNomina,
   rotuloDeRol,
   renglonesDeLetrado,
   particularidadDe,
@@ -388,3 +392,52 @@ describe("faltantesDeCaratula", () => {
     expect(faltan.map((lado) => lado.rol)).toEqual(["actor"]);
   });
 });
+
+describe("nombreDeNomina y nombreCompleto", () => {
+  it("adelanta el apellido en la nómina y lo deja al final en una frase", () => {
+    const rogel = parte({ id: "a", nombre: "Nicolás", apellido: "Rogel" });
+    expect(nombreDeNomina(rogel)).toBe("Rogel Nicolás");
+    expect(nombreCompleto(rogel)).toBe("Nicolás Rogel");
+  });
+
+  it("deja tal cual a quien no tiene apellido: una persona jurídica o una parte vieja", () => {
+    const aseguradora = parte({ id: "a", nombre: "Swiss Medical ART" });
+    expect(nombreDeNomina(aseguradora)).toBe("Swiss Medical ART");
+    expect(nombreCompleto(aseguradora)).toBe("Swiss Medical ART");
+  });
+
+  it("ordena cada lado por apellido", () => {
+    const [actora] = agruparPartes([
+      parte({ id: "z", rol: "actor", nombre: "Ana", apellido: "Zárate" }),
+      parte({ id: "b", rol: "actor", nombre: "Zoe", apellido: "Bravo" }),
+    ]);
+    expect(actora.partes.map((fila) => fila.parte.id)).toEqual(["b", "z"]);
+  });
+
+  it("dice de quién hereda en el orden en que se dice", () => {
+    const rosa = parte({ id: "r", nombre: "Rosa", apellido: "Díaz" });
+    const heredera = parte({ id: "h", caracter: "heredero", sucedeA: "r" });
+    expect(aclaracionDe(heredera, rosa)).toBe("Heredero de Rosa Díaz");
+  });
+
+  it("reconoce en la carátula a una parte partida en nombre y apellido, en cualquier orden", () => {
+    const rogel = parte({ id: "a", rol: "actor", nombre: "Nicolás", apellido: "Rogel" });
+    expect(faltantesDeCaratula(expediente({ actor: "Nicolás Rogel", demandado: "" }), [rogel])).toEqual([]);
+    expect(faltantesDeCaratula(expediente({ actor: "ROGEL NICOLAS", demandado: "" }), [rogel])).toEqual([]);
+  });
+});
+
+describe("colorDeParte", () => {
+  it("pinta a cada parte con el color de su lado", () => {
+    expect(colorDeParte(parte({ id: "a", rol: "actor" }), [])).toBe(colorDeLado("actora"));
+    expect(colorDeParte(parte({ id: "d", rol: "demandado" }), [])).toBe(colorDeLado("demandada"));
+    expect(colorDeLado("actora")).not.toBe(colorDeLado("demandada"));
+  });
+
+  it("le da al letrado el color del lado de su representado", () => {
+    const demandada = parte({ id: "d", rol: "demandado" });
+    const letrado = parte({ id: "l", rol: "letrado_contraria", representaA: "d" });
+    expect(colorDeParte(letrado, [demandada, letrado])).toBe(colorDeLado("demandada"));
+  });
+});
+

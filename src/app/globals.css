@@ -119,19 +119,6 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 /*
- * Tablero de partes (docs/02-expedientes.md §2.14).
- *
- * Cada parte es un ícono angosto con su nombre debajo, y la que se abre **se
- * lleva la fila entera**: su ficha —datos, letrados y formulario— no se lee en una columna de
- * ciento ochenta píxeles. La regla vive acá y no como una utilidad en la
- * pestaña porque es un `:has()` sobre el hijo, que en Tailwind solo se escribe
- * como una variante arbitraria que nadie podría leer después.
- */
-.tablero-partes > li:has(details[open]) {
-  grid-column: 1 / -1;
-}
-
-/*
  * Impresión de un escrito (docs/02-expedientes.md §2.5).
  *
  * La hoja ya trae sus propios márgenes en centímetros, los que configuró el

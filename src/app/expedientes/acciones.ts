@@ -168,6 +168,7 @@ function entradaParte(datos: FormData): EntradaParte {
     expedienteId: texto(datos, "expedienteId"),
     rol: texto(datos, "rol") as RolParte,
     nombre: texto(datos, "nombre"),
+    apellido: texto(datos, "apellido"),
     documento: texto(datos, "documento"),
     domicilioReal: texto(datos, "domicilioReal"),
     domicilioElectronico: texto(datos, "domicilioElectronico"),
@@ -184,6 +185,7 @@ function entradaParte(datos: FormData): EntradaParte {
     comparecioEl: texto(datos, "comparecioEl"),
     // Una casilla sin marcar no viaja en el formulario: no está es `false`.
     esCliente: datos.get("esCliente") !== null,
+    causaPropia: datos.get("causaPropia") !== null,
     notas: texto(datos, "notas"),
   };
 }

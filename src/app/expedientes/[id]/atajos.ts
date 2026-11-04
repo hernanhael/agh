@@ -69,14 +69,14 @@ export function esAtajoNota(evento: KeyboardEvent): boolean {
 }
 
 /**
- * Los atajos que **recorren el tablero de partes**, uno por lado: `alt+a` va a
- * la parte actora, `alt+d` a la demandada, `alt+g` a la citada en garantía y
- * `alt+t` —o `alt+5`— a los terceros.
+ * Los atajos de **cada lado de la nómina de partes**: `alt+a` la parte actora,
+ * `alt+d` la demandada, `alt+g` la citada en garantía, `alt+t` —o `alt+5`—
+ * los terceros y `alt+j` —o `alt+6`— los auxiliares del juzgado.
  *
- * **Son secuenciales**: la primera vez llevan a la primera parte de ese lado, y
- * cada vez que se repite la tecla con el `alt` apretado pasan a la siguiente,
- * hasta volver a la primera. Es el gesto de un litisconsorcio: en un juicio con
- * tres actores, `alt+a` tres veces los recorre a los tres sin tocar el mouse.
+ * **Abren y cierran el lado**, y al abrirlo ponen el foco en su primera parte;
+ * de ahí en adelante se camina con las flechas, no repitiendo el atajo. Si el
+ * lado ya está abierto y el foco está en otro lado, el atajo lleva a su
+ * primera parte; si el foco ya está adentro, lo cierra (`AtajosDeLado.tsx`).
  *
  * Las letras son las iniciales de cada lado y por eso se acuerdan. Los terceros
  * llevan dos teclas porque la `t` es la inicial y el `5` es el número del lado
@@ -99,6 +99,10 @@ export const ATAJOS_LADO: ReadonlyArray<{
   { lado: "demandada", atajo: "alt+d", codigos: ["KeyD"] },
   { lado: "citada", atajo: "alt+g", codigos: ["KeyG"] },
   { lado: "terceros", atajo: "alt+t", codigos: ["KeyT", "Digit5", "Numpad5"] },
+  // Los auxiliares del juzgado: la `j` de juzgado, porque la `a` es de la
+  // actora, y el `6` por ser el sexto contando desde arriba, como el `5` de los
+  // terceros. Ninguna de las dos escribe un carácter con AltGr.
+  { lado: "auxiliares", atajo: "alt+j", codigos: ["KeyJ", "Digit6", "Numpad6"] },
 ];
 
 /**
