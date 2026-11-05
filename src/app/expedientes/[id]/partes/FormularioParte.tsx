@@ -2,6 +2,7 @@ import { Campo, claseBotonPrimario, claseEntrada } from "@/components/ui";
 import {
   CARACTERES_PARTE,
   COMPARECENCIAS,
+  GENEROS,
   ROLES_PARTE,
   type Parte,
 } from "@/lib/datos/tipos";
@@ -12,7 +13,7 @@ import { agregarParte, guardarParte } from "../../acciones";
  * Formulario de una parte, el mismo para darla de alta y para editarla.
  *
  * Es el mismo formulario a propósito: la nómina se carga en dos momentos —el
- * nombre y el rol cuando se abre el expediente, el documento y los domicilios
+ * nombre y el rol cuando se abre el expediente, el documento y el domicilio
  * cuando llegan— y tener dos formularios distintos haría que el segundo momento
  * se sintiera otra pantalla.
  *
@@ -101,17 +102,19 @@ export function FormularioParte({
             className={claseEntrada}
           />
         </Campo>
-        <Campo
-          etiqueta="Domicilio electrónico"
-          ayuda="La casilla del SAE: por ahí llegan las notificaciones."
-        >
-          <input
-            type="text"
-            name="domicilioElectronico"
-            defaultValue={parte?.domicilioElectronico}
-            placeholder="20-12345678-9"
-            className={claseEntrada}
-          />
+        {/*
+          El género es para nombrar bien a la persona: "abogada" o "abogado"
+          en la ficha de su representado. Sin cargar se usa el masculino.
+        */}
+        <Campo etiqueta="Género" ayuda="Para decir abogado o abogada.">
+          <select name="genero" defaultValue={parte?.genero ?? ""} className={claseEntrada}>
+            <option value="">Sin indicar</option>
+            {GENEROS.map((genero) => (
+              <option key={genero.valor} value={genero.valor}>
+                {genero.etiqueta}
+              </option>
+            ))}
+          </select>
         </Campo>
         {/*
           La comparecencia arranca **sin elegir**: lo que corresponde a cada rol
@@ -205,12 +208,12 @@ export function FormularioParte({
         </Campo>
         {/*
           El desplegable solo lista partes que no representan a nadie: un
-          letrado del letrado no es algo que la nómina sepa dibujar, y el
+          abogado del abogado no es algo que la nómina sepa dibujar, y el
           repositorio lo rechazaría igual.
         */}
         <Campo
           etiqueta="Representa a"
-          ayuda="Para los letrados y apoderados: la parte que llevan."
+          ayuda="Para los abogados: la parte que llevan."
         >
           <select
             name="representaA"
@@ -228,7 +231,7 @@ export function FormularioParte({
         {/*
           Cesar es dejar de representar, así que el campo va pegado a "representa
           a" y el repositorio lo descarta en quien no representa a nadie. El
-          letrado que cesó **no se borra**: baja a "letrados anteriores" en la
+          abogado que cesó **no se borra**: baja a "abogados anteriores" en la
           ficha de su representado, porque lo que presentó mientras lo
           representaba sigue en el expediente.
         */}
@@ -243,15 +246,11 @@ export function FormularioParte({
             className={claseEntrada}
           />
         </Campo>
-        <Campo etiqueta="Notas" className="sm:col-span-2">
-          <input
-            type="text"
-            name="notas"
-            defaultValue={parte?.notas}
-            placeholder="Contestó la demanda el 12/09 y ofreció pericia médica."
-            className={claseEntrada}
-          />
-        </Campo>
+        {/*
+          La nota no está en el formulario: se escribe en la ficha de la parte,
+          con un clic o con alt+n, y con formato (`NotaDeParte`). Como el campo
+          no viaja, guardar este formulario no la toca.
+        */}
       </div>
 
       {/*
@@ -275,7 +274,7 @@ export function FormularioParte({
       {/*
         La parte que es abogada y litiga en causa propia: la nómina la pone a
         ella en la columna del abogado, "por derecho propio", en lugar de
-        reclamarle un letrado.
+        reclamarle un abogado.
       */}
       <label className="mt-2 flex items-start gap-2">
         <input
@@ -285,7 +284,7 @@ export function FormularioParte({
           className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 text-acento focus:ring-acento dark:border-zinc-700"
         />
         <span className="text-xs text-zinc-600 dark:text-zinc-400">
-          Se representa a sí misma: es abogada y litiga por derecho propio, sin otro letrado.
+          Se representa a sí misma: es abogada y litiga por derecho propio, sin otro abogado.
         </span>
       </label>
 

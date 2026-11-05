@@ -50,7 +50,6 @@ const CLIENTE: Parte = {
   nombre: "Nicolás Rogel",
   documento: "25.123.456",
   domicilioReal: "",
-  domicilioElectronico: "",
   telefono: "",
   email: "",
   representaA: "",
@@ -80,7 +79,7 @@ describe("encabezadoDeEscrito", () => {
     expect(encabezado.comparecencia).toContain("Hernán Rogel");
     expect(encabezado.comparecencia).toContain("matrícula CAT 1234");
     expect(encabezado.comparecencia).toContain("Expte. n.º 1234/26");
-    expect(encabezado.comparecencia).toContain("letrado de Nicolás Rogel");
+    expect(encabezado.comparecencia).toContain("abogado de Nicolás Rogel");
     expect(encabezado.comparecencia.endsWith("a V.S. respetuosamente digo:")).toBe(true);
     expect(encabezado.firma).toEqual(["Hernán Rogel", "Matrícula CAT 1234"]);
     expect(encabezado.faltantes).toEqual([]);
@@ -113,14 +112,14 @@ describe("encabezadoDeEscrito", () => {
       estudio: estudio(),
       suma: "Contesta",
     });
-    expect(comoActor.comparecencia).toContain("letrado de Nicolás Rogel");
+    expect(comoActor.comparecencia).toContain("abogado de Nicolás Rogel");
 
     const comoDemandado = encabezadoDeEscrito({
       expediente: expediente({ rolCliente: "demandado" }),
       estudio: estudio(),
       suma: "Contesta",
     });
-    expect(comoDemandado.comparecencia).toContain("letrado de Swiss Medical ART");
+    expect(comoDemandado.comparecencia).toContain("abogado de Swiss Medical ART");
   });
 
   it("no inventa lo que falta: lo marca y lo informa", () => {

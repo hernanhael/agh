@@ -52,6 +52,7 @@ export {
   llevaLetrado,
   nombreCompleto,
   nombreDeNomina,
+  palabraAbogado,
   rotuloDeRol,
   renglonesDeLetrado,
   particularidadDe,

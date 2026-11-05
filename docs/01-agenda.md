@@ -12,7 +12,7 @@ La Agenda es el calendario operativo del estudio. Reúne en una sola vista tres 
 
 Además agrupa dos módulos secundarios que encajan mejor aquí que en otra área ("quizás algo más" del pedido original):
 
-- **Contactos**: clientes, contrapartes, letrados de la contraria, peritos, juzgados y secretarías con datos de mesa de entradas.
+- **Contactos**: clientes, contrapartes, abogados de la contraria, peritos, juzgados y secretarías con datos de mesa de entradas.
 - **Honorarios y gastos**: por expediente, con referencia a la Ley 5480 y a los aportes previsionales.
 
 ## 2. Desarrollo
@@ -82,8 +82,8 @@ Cuando llega una notificación (desde el conector SAE o a mano), el abogado o el
 
 ### 2.5 Contactos
 
-- Tipos: cliente, contraparte, letrado, perito, juzgado/secretaría, mediador, escribano, otro.
-- Campos: nombre, DNI/CUIT, domicilio real, domicilio electrónico (para letrados), teléfono, correo, notas.
+- Tipos: cliente, contraparte, abogado, perito, juzgado/secretaría, mediador, escribano, otro.
+- Campos: nombre, género (para decir abogado o abogada), DNI/CUIT, domicilio real, teléfono, correo, notas. Sin domicilio electrónico: al estudio no le sirve el de terceros (`02-expedientes.md` §2.14).
 - Juzgados: centro judicial, fuero, nominación, secretaría, dirección, teléfono, horario de mesa de entradas, juez y secretario actuales.
 - Un contacto puede estar vinculado a varios expedientes con un rol distinto en cada uno.
 

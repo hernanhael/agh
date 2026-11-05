@@ -115,7 +115,7 @@ function comparecenciaDe(
     `abogado, matrícula ${matricula || completar("matrícula")}`,
     `con domicilio electrónico constituido en ${casilla || completar("domicilio electrónico")}`,
     `en los autos caratulados «${expediente.caratula}», Expte. n.º ${identificador(expediente)}`,
-    `en el carácter de letrado de ${porQuien || completar("cliente")}`,
+    `en el carácter de abogado de ${porQuien || completar("cliente")}`,
     "a V.S. respetuosamente digo:",
   ].join(", ");
 }

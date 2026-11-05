@@ -54,6 +54,7 @@ export {
   type EntradaGasto,
 } from "./gastos";
 export {
+  actualizarNotasParte,
   actualizarParte,
   crearParte,
   eliminarParte,

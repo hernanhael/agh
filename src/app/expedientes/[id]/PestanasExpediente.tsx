@@ -58,6 +58,7 @@ export function PestanasExpediente({ expedienteId }: { expedienteId: string }) {
   return (
     <nav
       aria-label="Secciones del expediente"
+      data-pestanas-expediente
       /* Reparto por `flex-1` y no por una rejilla de N columnas: así agregar
          una pestaña a `pestanas.ts` no obliga a cambiar acá el número de
          columnas. Abajo de `sm` entran cuatro por fila. */

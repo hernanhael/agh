@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useLadosPlegados } from "../LadosPlegados";
 import { ATAJOS_LADO, esAtajoDeLado } from "../atajos";
+import { focoEnLaFicha, renglonDe, useFichaAbierta } from "./FichaAbierta";
 
 /**
  * El teclado de la nómina de partes (docs/02-expedientes.md §2.14).
@@ -33,11 +34,11 @@ import { ATAJOS_LADO, esAtajoDeLado } from "../atajos";
  * un campo del formulario de una ficha abierta, o en cualquier otro lado de la
  * página, ↑ y ↓ siguen siendo del navegador.
  *
- * **Lo que recibe el foco es el `<summary>` de cada parte**, que es lo que se
- * abre con Enter: `alt+a`, Enter, y la ficha de ese actor está abierta. El
- * selector baja por hijos directos —`> li > details > summary`— y no por
- * descendientes, porque adentro de una parte abierta hay otros `<summary>`: el
- * "Editar" de la parte y el de cada uno de sus letrados.
+ * **Lo que recibe el foco es el renglón de cada parte** —el botón con
+ * `data-parte`—, que es lo que se abre con Enter: `alt+a`, Enter, y la ficha
+ * de ese actor está abierta en la ventana superpuesta. **Con la ficha abierta,
+ * la ficha sigue a las flechas**: pasar a otra parte muestra la suya
+ * (`FichaAbierta`).
  *
  * **No dibuja nada**: escucha el teclado y lee la pantalla. Los renglones los
  * arma el servidor con un `data-lado` en cada lista y un `data-lado-boton` en
@@ -48,7 +49,7 @@ import { ATAJOS_LADO, esAtajoDeLado } from "../atajos";
 /** Las partes de un lado, o de todos, en el orden de la pantalla. */
 function partesDe(lado?: string): HTMLElement[] {
   const filtro = lado ? `[data-lado="${lado}"]` : "[data-lado]";
-  return Array.from(document.querySelectorAll<HTMLElement>(`${filtro} > li > details > summary`));
+  return Array.from(document.querySelectorAll<HTMLElement>(`${filtro} > li > [data-parte]`));
 }
 
 function botonDe(lado: string): HTMLElement | null {
@@ -65,11 +66,21 @@ function enfocar(elemento: HTMLElement): void {
  * Devuelve `true` si la tecla era suya, para que el llamador no siga buscando
  * atajos.
  */
-function moverConFlechas(evento: KeyboardEvent): boolean {
+function moverConFlechas(
+  evento: KeyboardEvent,
+  abierta: string | null,
+  seguir: (id: string) => void,
+): boolean {
   if (evento.key !== "ArrowDown" && evento.key !== "ArrowUp") return false;
   if (evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return false;
 
-  const activo = document.activeElement as HTMLElement | null;
+  // Con la ficha abierta y el foco en la ventana —se hizo clic en ella— las
+  // flechas parten de la parte abierta, como si el foco siguiera en su
+  // renglón. En un campo del formulario de la ficha, en cambio, son del campo.
+  const activo =
+    abierta !== null && focoEnLaFicha(document.activeElement, { flechas: true })
+      ? renglonDe(abierta)
+      : (document.activeElement as HTMLElement | null);
   if (!activo) return false;
   const abajo = evento.key === "ArrowDown";
 
@@ -81,7 +92,9 @@ function moverConFlechas(evento: KeyboardEvent): boolean {
     const partes = partesDe(ladoDelBoton);
     if (activo.getAttribute("aria-expanded") !== "true" || partes.length === 0) return false;
     evento.preventDefault();
-    enfocar(abajo ? partes[0] : partes[partes.length - 1]);
+    const destino = abajo ? partes[0] : partes[partes.length - 1];
+    enfocar(destino);
+    if (destino.dataset.parte) seguir(destino.dataset.parte);
     return true;
   }
 
@@ -90,24 +103,25 @@ function moverConFlechas(evento: KeyboardEvent): boolean {
   if (!lado) return false;
   const partes = partesDe(lado);
   const actual = partes.indexOf(activo);
-  // Un `summary` de adentro de una ficha abierta —el "Editar"— está dentro del
-  // lado pero no es una parte: ahí las flechas siguen siendo del navegador.
   if (actual === -1) return false;
 
   evento.preventDefault();
   const largo = partes.length;
-  enfocar(partes[(actual + (abajo ? 1 : -1) + largo) % largo]);
+  const destino = partes[(actual + (abajo ? 1 : -1) + largo) % largo];
+  enfocar(destino);
+  if (destino.dataset.parte) seguir(destino.dataset.parte);
   return true;
 }
 
 export function AtajosDeLado() {
   const { plegado, fijar } = useLadosPlegados();
+  const { abierta, seguir } = useFichaAbierta();
 
   useEffect(() => {
     function alPresionar(evento: KeyboardEvent): void {
       // Las flechas van antes que la salvedad de la tecla sostenida: dejar
       // apretada ↓ sí tiene que bajar de parte en parte, como en cualquier lista.
-      if (moverConFlechas(evento)) return;
+      if (moverConFlechas(evento, abierta, seguir)) return;
 
       // Un atajo sostenido no abre y cierra el lado en ráfaga: se toma de a una
       // pulsación. Es la misma salvedad que hace `Desplegable`.
@@ -150,7 +164,7 @@ export function AtajosDeLado() {
 
     window.addEventListener("keydown", alPresionar);
     return () => window.removeEventListener("keydown", alPresionar);
-  }, [plegado, fijar]);
+  }, [plegado, fijar, abierta, seguir]);
 
   return null;
 }

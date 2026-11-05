@@ -1,11 +1,9 @@
 import { claseBotonAccion, claseSeparador, Pendientes, Vacio } from "@/components/ui";
 import {
   etiquetaDe,
-  hoy,
   listarPartes,
   obtenerEstudio,
   ROLES_PARTE,
-  type Parte,
 } from "@/lib/datos";
 import {
   agruparPartes,
@@ -25,7 +23,8 @@ import { Desplegable } from "../Desplegable";
 import { AtajosDeLado } from "./AtajosDeLado";
 import { FormularioParte } from "./FormularioParte";
 import { LadoPlegable } from "./LadoPlegable";
-import { TarjetaParte } from "./TarjetaParte";
+import { FichaAbierta, VentanaFicha } from "./FichaAbierta";
+import { FichaParte, TarjetaParte } from "./TarjetaParte";
 
 /**
  * Pestaña **Partes**: quiénes litigan, con qué carácter, quién los lleva y de
@@ -36,9 +35,9 @@ import { TarjetaParte } from "./TarjetaParte";
  * de cada parte, con el apellido primero, y pegado a él, en gris, quién la
  * lleva —o, en los auxiliares, su función—. Los nombres quedan alineados uno
  * debajo del otro, que es como se busca a alguien con la vista. Lo demás
- * —documento, domicilios, teléfono, carácter y los letrados con sus datos—
- * está adentro, a un clic: el renglón se abre en su lugar y la ficha se
- * despliega debajo.
+ * —documento, domicilios, teléfono, carácter y los abogados con sus datos—
+ * está adentro, a un clic: la ficha de la parte se abre en una ventana
+ * superpuesta, sobre un velo que desenfoca la aplicación (`FichaAbierta`).
  *
  * **La pestaña no lleva encabezado**: el tablero arranca arriba de todo. El
  * cuadro del expediente ya puso la carátula y el número (`layout.tsx`), y una
@@ -74,7 +73,7 @@ import { TarjetaParte } from "./TarjetaParte";
  *
  * Es el reparto que tiene el juicio en la cabeza del abogado: **quiénes litigan
  * van primero y quiénes no, después**. La citada en garantía y los terceros
- * litigan —tienen su propia contestación y su propio letrado—, así que están
+ * litigan —tienen su propia contestación y su propio abogado—, así que están
  * con el pleito y no mezclados con el perito y la mediadora; y cada uno con su
  * lado propio, porque meterlos adentro de "parte demandada" obligaba a leer el
  * rol de cada uno para saber cuál era cuál.
@@ -83,7 +82,7 @@ import { TarjetaParte } from "./TarjetaParte";
  * sobre la misma nómina: el área contesta "¿esto es el juicio o lo que lo
  * rodea?" y el lado "¿con quién o contra quién?" (`lib/procesal/partes`).
  *
- * **Los letrados no tienen tarjeta propia**: cuelgan de la parte que llevan,
+ * **Los abogados no tienen tarjeta propia**: cuelgan de la parte que llevan,
  * que es como se los encuentra cuando hay que llamar a alguien. En el renglón
  * de su representado aparece el abogado actual, al lado de su nombre, y adentro
  * de la ficha están todos, con los que cesaron en un bloque aparte.
@@ -152,18 +151,14 @@ function Area({
   grupos,
   faltantes,
   expedienteId,
-  representables,
   estudio,
-  diaDeHoy,
 }: {
   area: AreaParte;
   etiqueta: string;
   grupos: ReadonlyArray<GrupoPartes>;
   faltantes: ReadonlyArray<FaltanteDeCaratula>;
   expedienteId: string;
-  representables: ReadonlyArray<Parte>;
   estudio: string;
-  diaDeHoy: string;
 }) {
   const lados = LADOS_PARTE.filter((lado) => lado.area === area)
     .map((lado) => ({
@@ -217,10 +212,7 @@ function Area({
             <TarjetaParte
               key={fila.parte.id}
               fila={fila}
-              expedienteId={expedienteId}
-              representables={representables.filter((candidata) => candidata.id !== fila.parte.id)}
               estudio={estudio}
-              diaDeHoy={diaDeHoy}
               conAbogado={area !== "secundaria"}
             />
           ))}
@@ -245,10 +237,9 @@ export default async function PartesExpedientePage({
   const expediente = await cargarExpediente(id);
   const [partes, estudio] = await Promise.all([listarPartes(expediente.id), obtenerEstudio()]);
 
-  const diaDeHoy = hoy();
   const grupos = agruparPartes(partes);
   const faltantes = faltantesDeCaratula(expediente, partes);
-  // Un letrado no puede representar a otro letrado: el desplegable del
+  // Un abogado no puede representar a otro abogado: el desplegable del
   // formulario ofrece solo a quienes no representan a nadie.
   const representables = partes.filter((parte) => !parte.representaA);
 
@@ -266,6 +257,7 @@ export default async function PartesExpedientePage({
         acá, al lado de lo que recorre, y no en el cuadro del expediente,
         porque son atajos de esta pestaña (`AtajosDeLado.tsx`).
       */}
+      <FichaAbierta>
       <AtajosDeLado />
 
       {/*
@@ -290,12 +282,31 @@ export default async function PartesExpedientePage({
             grupos={grupos}
             faltantes={faltantes}
             expedienteId={expediente.id}
-            representables={representables}
             estudio={estudio.nombre}
-            diaDeHoy={diaDeHoy}
           />
         ))}
       </div>
+
+      {/*
+        **La ficha se abre encima de todo**, en una ventana sobre un velo
+        translúcido y desenfocado: la nómina queda atrás, quieta, y al recorrerla
+        con las flechas cambia solo el contenido de la ventana. Las fichas se
+        arman todas acá y la ventana muestra la abierta (`FichaAbierta`).
+      */}
+      <VentanaFicha>
+        {grupos.flatMap((grupo) => grupo.partes).map((fila) => (
+          <FichaParte
+            key={fila.parte.id}
+            fila={fila}
+            expedienteId={expediente.id}
+            // La lista entera: la ficha la usa también para editar a los
+            // abogados de esta parte, y a ellos sí hay que ofrecerles la parte
+            // que representan. Cada formulario se saca a sí mismo (`Editar`).
+            representables={representables}
+          />
+        ))}
+      </VentanaFicha>
+      </FichaAbierta>
 
       <Desplegable codigo={TECLA_PARTE} className={claseSeparador}>
         {/*
@@ -323,14 +334,13 @@ export default async function PartesExpedientePage({
           "Agenda de contactos del estudio: hoy cada parte guarda sus datos adentro del expediente, así que un mismo cliente con tres juicios se carga tres veces (contacts en docs/06-modelo-de-datos.md).",
           "Vínculo del cliente con sus otros expedientes, y de la contraria con los juicios en los que ya litigó el estudio.",
           "Encabezado de escrito armado con esta nómina: carátula, partes, documentos y domicilios constituidos, sin volver a tipearlos.",
-          "Cédulas y notificaciones a los domicilios electrónicos cargados.",
-          "La comparecencia y el cese del letrado escritos por la historia: hoy los dos se cargan a mano, aunque la presentación y la renuncia ya son entradas del expediente.",
+          "La comparecencia y el cese del abogado escritos por la historia: hoy los dos se cargan a mano, aunque la presentación y la renuncia ya son entradas del expediente.",
           "Caracteres y sus particularidades a confirmar con el abogado, sobre todo los recién sumados (causante, acreedor, apoderado civil, cesionario, curador, desistido, fallido, excluido del proceso), y los que falten: subrogante, concursado.",
           "Aseguradoras con su póliza y su cobertura, y peritos con su especialidad y su matrícula.",
           "Cómo se vuelve a ver quién es el cliente: el lado ya lo dice su sección, pero cuál de las partes de ese lado es el cliente quedó solo adentro de la ficha.",
           "El color de cada lado en la historia del expediente, al lado de cada escrito, para ver de un vistazo de qué lado viene.",
           "La sucesión indivisa es el único carácter sin ejemplo cargado: aparece cuando se demanda al acervo de alguien que murió, así que va en otro expediente y no en estos dos.",
-          "El curador de una parte con capacidad restringida, que hoy va en las notas: la nómina solo sabe colgar letrados de una parte, y un curador no es un letrado.",
+          "El curador de una parte con capacidad restringida, que hoy va en las notas: la nómina solo sabe colgar abogados de una parte, y un curador no es un abogado.",
         ]}
       />
     </>

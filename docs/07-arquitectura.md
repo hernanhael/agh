@@ -172,7 +172,7 @@ Los componentes de cliente se cuentan con los dedos y cada uno lo es por una raz
 
 ### 3.3 Reglas procesales
 
-`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11), la **audiencia fijada** (`audiencia.ts`), la **nómina de partes** (`partes.ts`: lados y áreas de la causa, orden de las tarjetas, comparecencia resuelta por rol, letrados actuales y cesados, particularidad del carácter, conciliación con la carátula, §2.14), la **historia** (`historia.ts`: qué cuenta como acto de impulso, mezcla con los hechos de la ficha, filtros, §2.3) y el **recorrido por las etapas** (`recorrido.ts`: qué se cumplió y qué falta).
+`lib/procesal/` aplica derecho procesal sobre el expediente: recibe el expediente y el día de hoy, y devuelve una situación. Hoy tiene la **caducidad de instancia** (`caducidad.ts`, docs/02-expedientes.md §2.11), la **audiencia fijada** (`audiencia.ts`), la **nómina de partes** (`partes.ts`: lados y áreas de la causa, orden de la nómina —con las fallecidas al final—, comparecencia resuelta por rol, abogados actuales y cesados, "abogado" o "abogada" según el género, conciliación con la carátula, §2.14), la **historia** (`historia.ts`: qué cuenta como acto de impulso, mezcla con los hechos de la ficha, filtros, §2.3) y el **recorrido por las etapas** (`recorrido.ts`: qué se cumplió y qué falta).
 
 Es puro como `lib/plazos` y por los mismos motivos: corre en el servidor y en el cliente con el mismo resultado —el listado muestra el semáforo de caducidad mientras el abogado filtra— y se testea con fechas fijas. Dos reglas que se siguen de eso:
 

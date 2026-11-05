@@ -13,7 +13,9 @@ import { guardarNotas } from "../acciones";
 import { ATAJO_NOTA, esAtajoNota } from "./atajos";
 
 /**
- * La nota del expediente, que se edita con un clic (docs/02-expedientes.md §2.1).
+ * Una **nota que se edita con un clic**: la del expediente en Datos
+ * (docs/02-expedientes.md §2.1) y la de cada parte en su ficha (§2.14). Las
+ * dos son el mismo editor (`NotaEditable`) con otro lugar donde guardarse.
  *
  * No hay botón de "editar" ni formulario: se hace clic sobre el texto y el
  * recuadro pasa a modo edición; se hace clic afuera —o se aprieta Escape— y se
@@ -208,13 +210,27 @@ function NotaLeida({ lineas }: { lineas: LineaNota[] }) {
   );
 }
 
-export function NotaExpediente({
-  expedienteId,
+/** Lo que devuelve guardar una nota: bien, o el error para mostrar. */
+type ResultadoNota = { ok: true } | { ok: false; error: string };
+
+export function NotaEditable({
   notas,
+  guardarNota,
+  etiqueta,
+  conAtajo = true,
 }: {
-  expedienteId: string;
   /** La nota guardada, con las marcas de `lib/notas`. */
   notas: string;
+  /** Guarda el texto con marcas donde corresponda. */
+  guardarNota: (texto: string) => Promise<ResultadoNota>;
+  /** Cómo la nombra el lector de pantalla: "Nota del expediente". */
+  etiqueta: string;
+  /**
+   * Si `alt+n` la abre y la cierra. En la pestaña Partes hay una nota por
+   * ficha y todas están montadas: solo la de la ficha abierta tiene el atajo,
+   * para que una sola pulsación no abra todas a la vez.
+   */
+  conAtajo?: boolean;
 }) {
   /*
    * `guardada` es la nota que se muestra. Arranca en la que vino del servidor
@@ -301,7 +317,7 @@ export function NotaExpediente({
       return;
     }
     guardando.current = true;
-    const resultado = await guardarNotas(expedienteId, texto);
+    const resultado = await guardarNota(texto);
     guardando.current = false;
     if (!resultado.ok) {
       // El recuadro se queda abierto con lo escrito: cerrarlo perdería la nota.
@@ -311,7 +327,7 @@ export function NotaExpediente({
     setGuardada(texto);
     setEditando(false);
     setError("");
-  }, [expedienteId, guardada]);
+  }, [guardarNota, guardada]);
 
   /*
    * `alt+n` **abre y cierra** la nota desde cualquier parte de la pestaña (ver
@@ -329,6 +345,7 @@ export function NotaExpediente({
    * atender.
    */
   useEffect(() => {
+    if (!conAtajo) return;
     function alPresionar(evento: KeyboardEvent): void {
       if (!esAtajoNota(evento) || evento.repeat) return;
       evento.preventDefault();
@@ -341,7 +358,7 @@ export function NotaExpediente({
     }
     window.addEventListener("keydown", alPresionar);
     return () => window.removeEventListener("keydown", alPresionar);
-  }, [editando, guardada, guardar]);
+  }, [conAtajo, editando, guardada, guardar]);
 
   function alSalir(evento: React.FocusEvent<HTMLDivElement>): void {
     // Pasar del editable a un control del borde no es salir de la nota. Los
@@ -432,7 +449,7 @@ export function NotaExpediente({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline
-        aria-label="Nota del expediente"
+        aria-label={etiqueta}
         onKeyDown={alTeclear}
         className="text-sm whitespace-pre-wrap text-zinc-800 focus:outline-none dark:text-zinc-200 [&_strong]:font-semibold"
       />
@@ -448,6 +465,9 @@ export function NotaExpediente({
       key="leyendo"
       role="button"
       tabIndex={0}
+      // En la ficha de una parte, con la nota enfocada las flechas siguen
+      // pasando de parte (`focoEnLaFicha` en `partes/FichaAbierta`).
+      data-sigue-flechas
       onClick={abrir}
       onKeyDown={(evento) => {
         if (evento.key === "Enter" || evento.key === " ") {
@@ -469,4 +489,19 @@ export function NotaExpediente({
       )}
     </div>
   );
+}
+
+/** La nota del expediente, en la pestaña Datos. */
+export function NotaExpediente({
+  expedienteId,
+  notas,
+}: {
+  expedienteId: string;
+  notas: string;
+}) {
+  const guardarNota = useCallback(
+    (texto: string) => guardarNotas(expedienteId, texto),
+    [expedienteId],
+  );
+  return <NotaEditable notas={notas} guardarNota={guardarNota} etiqueta="Nota del expediente" />;
 }

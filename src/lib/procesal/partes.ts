@@ -229,9 +229,18 @@ export function ladoDeRol(rol: RolParte): LadoParte {
  * obliga a leer los tres nombres para encontrar al propio. En los lados donde
  * no hay cliente —que son todos menos uno— la regla no cambia nada y el orden
  * sigue siendo el del catálogo.
+ *
+ * **Las partes fallecidas van al final de su lado**, debajo de la última que
+ * sigue en el juicio, y entre ellas **solo por orden alfabético**: ya no se las
+ * busca por ser el cliente ni por su rol, y mezcladas con las vivas cortaban
+ * la lista de quienes litigan hoy. No cambian de lado: el actor fallecido sigue
+ * en la parte actora.
  */
 function compararPartes(a: Parte, b: Parte): number {
   const indice = (parte: Parte) => ROLES_PARTE.findIndex((rol) => rol.valor === parte.rol);
+  const fallecida = (parte: Parte) => Number(Boolean(parte.fallecioEl));
+  if (fallecida(a) !== fallecida(b)) return fallecida(a) - fallecida(b);
+  if (fallecida(a)) return nombreDeNomina(a).localeCompare(nombreDeNomina(b), "es");
   return (
     Number(b.esCliente) - Number(a.esCliente) ||
     indice(a) - indice(b) ||
@@ -450,6 +459,22 @@ export function letradosDe(representantes: ReadonlyArray<Parte>): Letrados {
       .filter((letrado) => Boolean(letrado.cesoEl))
       .sort((a, b) => (b.cesoEl ?? "").localeCompare(a.cesoEl ?? "")),
   };
+}
+
+/**
+ * **"Abogado" o "abogada"**, según quiénes sean, con mayúscula inicial para
+ * usarlo de título o de rótulo.
+ *
+ * Una sola persona se nombra por su género; varias van en femenino solo si son
+ * todas mujeres, que es como se dice en castellano ("las abogadas", "los
+ * abogados" si hay al menos un varón). Sin género cargado se usa el masculino,
+ * el genérico de los escritos.
+ */
+export function palabraAbogado(personas: ReadonlyArray<Pick<Parte, "genero">>): string {
+  const todasMujeres =
+    personas.length > 0 && personas.every((persona) => persona.genero === "femenino");
+  if (personas.length > 1) return todasMujeres ? "Abogadas" : "Abogados";
+  return todasMujeres ? "Abogada" : "Abogado";
 }
 
 /** La parte marcada como cliente del estudio, si hay alguna cargada. */

@@ -6,6 +6,7 @@ import {
   actualizarEntradaHistoria,
   actualizarExpediente,
   actualizarNotasExpediente,
+  actualizarNotasParte,
   actualizarParte,
   crearEntradaHistoria,
   crearExpediente,
@@ -21,6 +22,7 @@ import {
   type CentroJudicial,
   type ClaseExpediente,
   type Comparecencia,
+  type Genero,
   type ConceptoGasto,
   type EntradaExpediente,
   type EntradaParte,
@@ -115,6 +117,21 @@ export async function guardarNotas(
   return { ok: true };
 }
 
+/**
+ * La nota de una parte, desde el editor de su ficha. Igual que `guardarNotas`
+ * no redirige: el editor se queda donde está y la ficha sigue abierta.
+ */
+export async function guardarNotasParte(
+  expedienteId: string,
+  parteId: string,
+  notas: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const resultado = await actualizarNotasParte(parteId, notas);
+  if (!resultado.ok) return { ok: false, error: resultado.error };
+  revalidatePath(`/expedientes/${expedienteId}`, "layout");
+  return { ok: true };
+}
+
 export async function borrarExpediente(datos: FormData): Promise<void> {
   const resultado = await eliminarExpediente(texto(datos, "id"));
   revalidatePath("/expedientes");
@@ -171,7 +188,6 @@ function entradaParte(datos: FormData): EntradaParte {
     apellido: texto(datos, "apellido"),
     documento: texto(datos, "documento"),
     domicilioReal: texto(datos, "domicilioReal"),
-    domicilioElectronico: texto(datos, "domicilioElectronico"),
     telefono: texto(datos, "telefono"),
     email: texto(datos, "email"),
     representaA: texto(datos, "representaA"),
@@ -186,7 +202,10 @@ function entradaParte(datos: FormData): EntradaParte {
     // Una casilla sin marcar no viaja en el formulario: no está es `false`.
     esCliente: datos.get("esCliente") !== null,
     causaPropia: datos.get("causaPropia") !== null,
-    notas: texto(datos, "notas"),
+    // La nota no viaja en el formulario de la parte: se edita en su ficha
+    // (`guardarNotasParte`). Si el campo no está, editar no la toca.
+    notas: datos.has("notas") ? texto(datos, "notas") : undefined,
+    genero: texto(datos, "genero") as Genero | "",
   };
 }
 

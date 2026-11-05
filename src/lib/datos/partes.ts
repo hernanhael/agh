@@ -6,10 +6,12 @@ import { correcto, fallo, type Resultado } from "./resultado";
 import {
   CARACTERES_PARTE,
   COMPARECENCIAS,
+  GENEROS,
   ROLES_PARTE,
   type CaracterParte,
   type Comparecencia,
   type Datos,
+  type Genero,
   type Parte,
   type RolParte,
 } from "./tipos";
@@ -32,7 +34,6 @@ export interface EntradaParte {
   apellido: string;
   documento: string;
   domicilioReal: string;
-  domicilioElectronico: string;
   telefono: string;
   email: string;
   /** Id de otra parte del mismo expediente. Vacío si no representa a nadie. */
@@ -50,12 +51,25 @@ export interface EntradaParte {
   esCliente: boolean;
   /** Si es abogada y se representa a sí misma. */
   causaPropia: boolean;
-  notas: string;
+  /**
+   * La nota de la parte. **Sin ella, editar no la toca**: la nota se escribe
+   * en la ficha con su propio editor (`actualizarNotasParte`) y el formulario
+   * de la parte ya no la manda; si un formulario sin nota la borrara, guardar
+   * un teléfono se llevaría puesta la nota.
+   */
+  notas?: string;
+  /** Vacío mientras no se sepa. */
+  genero: Genero | "";
 }
 
 /** El rol pedido si está en el catálogo; si no, "otro". */
 function rolValido(valor: string): RolParte {
   return ROLES_PARTE.some((rol) => rol.valor === valor) ? (valor as RolParte) : "otro";
+}
+
+/** El género pedido si está en el catálogo; si no, sin cargar. */
+function generoValido(valor: string): Genero | undefined {
+  return GENEROS.some((genero) => genero.valor === valor) ? (valor as Genero) : undefined;
 }
 
 /** El carácter pedido si está en el catálogo; si no, el caso normal. */
@@ -90,7 +104,7 @@ function documento(valor: string): string {
   return normalizarEspacios(valor);
 }
 
-/** Casilla del SAE o correo: se guardan en minúsculas, que es como se tipean. */
+/** El correo se guarda en minúsculas, que es como se tipea. */
 function minusculas(valor: string): string {
   return normalizarEspacios(valor).toLowerCase();
 }
@@ -105,13 +119,13 @@ function normalizar(entrada: EntradaParte, acentuar: boolean) {
     // El domicilio es un nombre de calle y de ciudad: va como título, que es lo
     // que deja "San Miguel de Tucumán" con la partícula en minúscula.
     domicilioReal: titulo(entrada.domicilioReal, opciones),
-    domicilioElectronico: minusculas(entrada.domicilioElectronico),
     telefono: normalizarEspacios(entrada.telefono),
     email: minusculas(entrada.email),
     esCliente: entrada.esCliente,
     causaPropia: entrada.causaPropia,
-    notas: oracion(entrada.notas),
+    notas: entrada.notas === undefined ? undefined : oracion(entrada.notas),
     caracter: caracterValido(entrada.caracter),
+    genero: generoValido(entrada.genero),
     comparecencia: comparecenciaValida(entrada.comparecencia),
     // La fecha de la presentación solo se guarda si hubo presentación: con
     // "no compareció" cargada, una fecha suelta sería un dato que contradice
@@ -204,6 +218,7 @@ export async function crearParte(entrada: EntradaParte): Promise<Resultado<Parte
       id: randomUUID(),
       expedienteId: expediente.id,
       ...campos,
+      notas: campos.notas ?? "",
       representaA,
       // Cesar es dejar de representar: en quien no representa a nadie, la
       // fecha no significa nada y no se guarda.
@@ -241,7 +256,8 @@ export async function actualizarParte(
       entrada.representaA,
       parte.id,
     );
-    Object.assign(parte, campos, {
+    const { notas, ...resto } = campos;
+    Object.assign(parte, resto, notas === undefined ? {} : { notas }, {
       representaA,
       cesoEl: representaA ? campos.cesoEl : "",
       sucedeA: sucedeValido(datos, parte.expedienteId, entrada.sucedeA, parte.id),
@@ -281,7 +297,6 @@ export async function sumarParteDeCaratula(
     apellido: "",
     documento: "",
     domicilioReal: "",
-    domicilioElectronico: "",
     telefono: "",
     email: "",
     representaA: "",
@@ -298,6 +313,28 @@ export async function sumarParteDeCaratula(
     esCliente: expediente.rolCliente === rol,
     causaPropia: false,
     notas: "",
+    genero: "",
+  });
+}
+
+/**
+ * Guarda la **nota de una parte**, que se escribe en su ficha con el mismo
+ * editor que la nota del expediente (`NotaEditable`).
+ *
+ * Va aparte de `actualizarParte` por la misma razón que la del expediente: es
+ * texto con marcas de formato (`lib/notas`) y no un campo de formulario, así
+ * que no pasa por la corrección de mayúsculas, que podría tocar las marcas.
+ */
+export async function actualizarNotasParte(
+  id: string,
+  notas: string,
+): Promise<Resultado<Parte>> {
+  return modificarDatos((datos) => {
+    const parte = (datos.partes ?? []).find((candidata) => candidata.id === id);
+    if (!parte) return fallo<Parte>("No se encontró la parte.");
+    parte.notas = notas.trim();
+    parte.actualizadoEn = ahora();
+    return correcto(parte);
   });
 }
 

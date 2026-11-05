@@ -16,6 +16,7 @@ import {
   llevaLetrado,
   nombreCompleto,
   nombreDeNomina,
+  palabraAbogado,
   rotuloDeRol,
   renglonesDeLetrado,
   particularidadDe,
@@ -29,7 +30,6 @@ function parte(parcial: Partial<Parte> & { id: string }): Parte {
     nombre: parcial.id,
     documento: "",
     domicilioReal: "",
-    domicilioElectronico: "",
     telefono: "",
     email: "",
     representaA: "",
@@ -89,6 +89,20 @@ describe("ladoDeRol", () => {
 describe("agruparPartes", () => {
   it("sin partes no devuelve ningún grupo", () => {
     expect(agruparPartes([])).toEqual([]);
+  });
+
+  it("pone a las fallecidas al final de su lado, en orden alfabético", () => {
+    const [actora, demandada] = agruparPartes([
+      parte({ id: "z", rol: "actor", nombre: "Zoe", apellido: "Zárate", fallecioEl: "2026-10-02" }),
+      parte({ id: "c", rol: "actor", nombre: "Nicolás", apellido: "Rogel", esCliente: true }),
+      parte({ id: "a", rol: "actor", nombre: "Ana", apellido: "Álvarez", fallecioEl: "2026-01-01" }),
+      parte({ id: "m", rol: "actor", nombre: "Gabriela", apellido: "Maidana" }),
+      parte({ id: "d", rol: "demandado", nombre: "Swiss Medical ART" }),
+    ]);
+    // El cliente sigue primero entre los vivos; las fallecidas, abajo y por
+    // apellido, aunque una sea anterior al cliente en el alfabeto.
+    expect(actora.partes.map((fila) => fila.parte.id)).toEqual(["c", "m", "a", "z"]);
+    expect(demandada.partes.map((fila) => fila.parte.id)).toEqual(["d"]);
   });
 
   it("deja afuera los lados vacíos y conserva el orden de los lados", () => {
@@ -210,7 +224,7 @@ describe("rotuloDeRol", () => {
     expect(rotuloDeRol("perito")).toBe("Perito");
     expect(rotuloDeRol("sindico")).toBe("Síndico");
     // El letrado no cae en ningún lado y va a parar a esa misma columna.
-    expect(rotuloDeRol("letrado_contraria")).toBe("Letrado");
+    expect(rotuloDeRol("letrado_contraria")).toBe("Abogado");
   });
 });
 
@@ -441,3 +455,19 @@ describe("colorDeParte", () => {
   });
 });
 
+
+describe("palabraAbogado", () => {
+  it("nombra a cada uno por su género, y sin género usa el masculino", () => {
+    expect(palabraAbogado([parte({ id: "a", genero: "femenino" })])).toBe("Abogada");
+    expect(palabraAbogado([parte({ id: "a", genero: "masculino" })])).toBe("Abogado");
+    expect(palabraAbogado([parte({ id: "a" })])).toBe("Abogado");
+  });
+
+  it("varias van en femenino solo si son todas mujeres", () => {
+    const ella = parte({ id: "a", genero: "femenino" });
+    const otra = parte({ id: "b", genero: "femenino" });
+    const el = parte({ id: "c", genero: "masculino" });
+    expect(palabraAbogado([ella, otra])).toBe("Abogadas");
+    expect(palabraAbogado([ella, el])).toBe("Abogados");
+  });
+});

@@ -26,6 +26,7 @@ import {
   listarHistoria,
 } from "./historia";
 import {
+  actualizarNotasParte,
   actualizarParte,
   crearParte,
   eliminarParte,
@@ -483,7 +484,6 @@ describe("partes del expediente", () => {
     causaPropia: false,
     documento: " 30-12345678-9 ",
     domicilioReal: "san martin 450, san miguel de tucuman",
-    domicilioElectronico: " 20-25123456-7 ",
     telefono: "381 555 0101",
     email: " Contacto@Estudio.COM ",
     representaA: "",
@@ -495,6 +495,7 @@ describe("partes del expediente", () => {
     comparecioEl: "",
     esCliente: false,
     notas: "CONTESTO LA DEMANDA EL LUNES",
+    genero: "",
   };
 
   /** Un expediente propio al que colgarle las partes de cada test. */
@@ -504,7 +505,7 @@ describe("partes del expediente", () => {
     return resultado.valor.id;
   }
 
-  it("guarda la parte normalizada: nombre propio, domicilio como título y casilla en minúscula", async () => {
+  it("guarda la parte normalizada: nombre propio, domicilio como título y correo en minúscula", async () => {
     const expedienteId = await expedientePropio();
     const resultado = await crearParte({ ...PARTE_BASE, expedienteId });
     if (!resultado.ok) throw new Error(resultado.error);
@@ -515,7 +516,6 @@ describe("partes del expediente", () => {
     expect(resultado.valor.nombre).toBe("Electronica del Norte SRL");
     expect(resultado.valor.documento).toBe("30-12345678-9");
     expect(resultado.valor.domicilioReal).toBe("San Martín 450, San Miguel de Tucumán");
-    expect(resultado.valor.domicilioElectronico).toBe("20-25123456-7");
     expect(resultado.valor.email).toBe("contacto@estudio.com");
     expect(resultado.valor.notas).toBe("Contesto la demanda el lunes");
   });
@@ -601,18 +601,43 @@ describe("partes del expediente", () => {
 
   it("edita la parte conservando su identidad", async () => {
     const expedienteId = await expedientePropio();
-    const creada = await crearParte({ ...PARTE_BASE, expedienteId, domicilioElectronico: "" });
+    const creada = await crearParte({ ...PARTE_BASE, expedienteId, telefono: "" });
     if (!creada.ok) throw new Error(creada.error);
 
     const guardada = await actualizarParte(creada.valor.id, {
       ...PARTE_BASE,
       expedienteId,
-      domicilioElectronico: "20-30111222-3",
+      telefono: "381 555 0202",
+      genero: "femenino",
     });
     if (!guardada.ok) throw new Error(guardada.error);
     expect(guardada.valor.id).toBe(creada.valor.id);
-    expect(guardada.valor.domicilioElectronico).toBe("20-30111222-3");
+    expect(guardada.valor.telefono).toBe("381 555 0202");
+    expect(guardada.valor.genero).toBe("femenino");
     expect(await listarPartes(expedienteId)).toHaveLength(1);
+  });
+
+  it("la nota se guarda aparte, y editar la parte sin nota no la borra", async () => {
+    const expedienteId = await expedientePropio();
+    const creada = await crearParte({ ...PARTE_BASE, expedienteId });
+    if (!creada.ok) throw new Error(creada.error);
+
+    const nota = await actualizarNotasParte(creada.valor.id, " [b]Ojo[/b]: pide pericia. ");
+    if (!nota.ok) throw new Error(nota.error);
+    // Las marcas de formato se guardan tal cual: no pasan por la corrección
+    // de mayúsculas del formulario.
+    expect(nota.valor.notas).toBe("[b]Ojo[/b]: pide pericia.");
+
+    const { notas: _sinNota, ...sinNota } = PARTE_BASE;
+    void _sinNota;
+    const guardada = await actualizarParte(creada.valor.id, {
+      ...sinNota,
+      expedienteId,
+      telefono: "381 555 0303",
+    });
+    if (!guardada.ok) throw new Error(guardada.error);
+    expect(guardada.valor.telefono).toBe("381 555 0303");
+    expect(guardada.valor.notas).toBe("[b]Ojo[/b]: pide pericia.");
   });
 
   it("suma desde la carátula al actor, con el nombre ya normalizado y marcado como cliente", async () => {

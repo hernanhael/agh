@@ -519,6 +519,18 @@ export type CaracterParte =
  * rol. El perito no comparece, lo designa el juzgado; el letrado tampoco, es el
  * que hace comparecer a su representado.
  */
+/**
+ * Si la persona es mujer o varón, para nombrarla bien: "abogada" o "abogado".
+ * Vacío mientras no se cargó, y entonces se usa el masculino, que es el
+ * genérico de los escritos.
+ */
+export type Genero = "femenino" | "masculino";
+
+export const GENEROS: ReadonlyArray<{ valor: Genero; etiqueta: string }> = [
+  { valor: "femenino", etiqueta: "Femenino" },
+  { valor: "masculino", etiqueta: "Masculino" },
+];
+
 export type Comparecencia =
   | "pendiente"
   | "comparecio"
@@ -541,11 +553,6 @@ export interface Parte {
   documento: string;
   /** Dónde vive o tiene su sede: el domicilio real del escrito. */
   domicilioReal: string;
-  /**
-   * Casilla del SAE por donde llegan las notificaciones electrónicas. Es el
-   * dato operativo de la nómina: sin él no se puede notificar.
-   */
-  domicilioElectronico: string;
   telefono: string;
   email: string;
   /**
@@ -623,6 +630,8 @@ export interface Parte {
    * decir "heredero" a secas.
    */
   sucedeA?: string;
+  /** Femenino o masculino, para decir "abogada" o "abogado" (`Genero`). */
+  genero?: Genero;
 }
 
 export const ROLES_PARTE: ReadonlyArray<{
@@ -644,7 +653,7 @@ export const ROLES_PARTE: ReadonlyArray<{
   },
   {
     valor: "letrado_contraria",
-    etiqueta: "Letrado",
+    etiqueta: "Abogado",
     detalle:
       "El abogado de una de las partes, patrocinante o apoderado según su carácter. Se vincula a la parte que representa.",
   },
@@ -755,7 +764,7 @@ export const CARACTERES_PARTE: ReadonlyArray<{
   {
     valor: "defensoria_oficial",
     etiqueta: "Defensoría Oficial",
-    detalle: "Asiste o representa a quien no tiene letrado particular.",
+    detalle: "Asiste o representa a quien no tiene abogado particular.",
     particularidad:
       "Las notificaciones van a la Defensoría y no al domicilio de la parte. Los plazos se cuentan desde que la Defensoría quedó notificada.",
     // Es el lugar, y el rol al lado sobra: lo que hace falta saber es que
@@ -774,7 +783,7 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     etiqueta: "Organismo estatal",
     detalle: "El Estado nacional, provincial o municipal, o un ente suyo.",
     particularidad:
-      "Lleva su propia representación letrada —Fiscalía de Estado, apoderado del organismo— y tiene formas de emplazamiento y plazos propios.",
+      "Lleva sus propios abogados —Fiscalía de Estado, apoderado del organismo— y tiene formas de emplazamiento y plazos propios.",
   },
   {
     valor: "citado_coactivo",
@@ -820,7 +829,7 @@ export const CARACTERES_PARTE: ReadonlyArray<{
     etiqueta: "Apoderado civil",
     detalle: "Actúa por otra persona con un poder, sin ser su abogado.",
     particularidad:
-      "Hay que agregar el poder y verificar que alcance para el acto. Necesita igualmente patrocinio letrado.",
+      "Hay que agregar el poder y verificar que alcance para el acto. Necesita igualmente el patrocinio de un abogado.",
   },
   {
     valor: "cesionario",
@@ -932,7 +941,7 @@ export const COMPARECENCIAS: ReadonlyArray<{
   {
     valor: "no_corresponde",
     etiqueta: "No comparece",
-    detalle: "No es algo que se le pregunte a ese rol: el perito, el mediador, el letrado.",
+    detalle: "No es algo que se le pregunte a ese rol: el perito, el mediador, el abogado.",
   },
 ];
 
