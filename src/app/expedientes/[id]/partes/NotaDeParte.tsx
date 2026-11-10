@@ -36,6 +36,7 @@ export function NotaDeParte({
       guardarNota={guardarNota}
       etiqueta="Nota de la parte"
       conAtajo={abierta === parteId}
+      compacta
     />
   );
 }

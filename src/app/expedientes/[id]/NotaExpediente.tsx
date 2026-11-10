@@ -218,6 +218,7 @@ export function NotaEditable({
   guardarNota,
   etiqueta,
   conAtajo = true,
+  compacta = false,
 }: {
   /** La nota guardada, con las marcas de `lib/notas`. */
   notas: string;
@@ -231,7 +232,13 @@ export function NotaEditable({
    * para que una sola pulsación no abra todas a la vez.
    */
   conAtajo?: boolean;
+  /**
+   * Letra un punto más chica. La usa la ficha de una parte, donde la nota va
+   * al pie, después de los abogados, y no tiene que competir con los datos.
+   */
+  compacta?: boolean;
 }) {
+  const tamano = compacta ? "text-[0.8125rem]" : "text-sm";
   /*
    * `guardada` es la nota que se muestra. Arranca en la que vino del servidor
    * y se adelanta al guardar: `revalidatePath` tarda un viaje de ida y vuelta,
@@ -451,7 +458,7 @@ export function NotaEditable({
         aria-multiline
         aria-label={etiqueta}
         onKeyDown={alTeclear}
-        className="text-sm whitespace-pre-wrap text-zinc-800 focus:outline-none dark:text-zinc-200 [&_strong]:font-semibold"
+        className={`${tamano} whitespace-pre-wrap text-zinc-800 focus:outline-none dark:text-zinc-200 [&_strong]:font-semibold`}
       />
 
       {error ? (
@@ -478,7 +485,7 @@ export function NotaEditable({
       title={`Hacé clic para editar la nota (${ATAJO_NOTA})`}
       // El borde existe también acá, transparente, para que entrar a editar no
       // corra el texto un píxel para el costado.
-      className="-mx-2 cursor-text rounded-md border border-transparent px-2 py-1.5 text-sm text-zinc-700 transition-colors hover:bg-background focus-visible:border-dashed focus-visible:border-linea-fuerte focus-visible:bg-background focus-visible:outline-none dark:text-zinc-300"
+      className={`-mx-2 cursor-text rounded-md border border-transparent px-2 py-1.5 ${tamano} text-zinc-700 transition-colors hover:bg-background focus-visible:border-dashed focus-visible:border-linea-fuerte focus-visible:bg-background focus-visible:outline-none dark:text-zinc-300`}
     >
       {vacia ? (
         <span className="text-zinc-400 dark:text-zinc-600">

@@ -489,13 +489,20 @@ export function FichaParte({
             ) : null}
           </dl>
 
+          <Abogados abogados={actuales} />
+          <AbogadosAnteriores abogados={anteriores} />
+
           {/*
             **La nota se edita en su lugar**, con un clic o con `alt+n`, igual
             que la del expediente en Datos (`NotaDeParte`). Se muestra siempre,
             también vacía: si desapareciera no habría dónde hacer el primer clic.
+            Va al pie, después de los abogados, y un punto más chica que el
+            resto: es un apunte, no un dato de la parte. El tamaño del título va
+            en `style` porque `.rotulo` está fuera de las capas de Tailwind y le
+            ganaría a una clase `text-*`.
           */}
           <section className="group/nota mt-4 border-t border-linea pt-3">
-            <h4 className="rotulo text-zinc-500 dark:text-zinc-500">
+            <h4 className="rotulo text-zinc-500 dark:text-zinc-500" style={{ fontSize: "0.625rem" }}>
               Notas
               <span
                 aria-hidden
@@ -508,9 +515,6 @@ export function FichaParte({
               <NotaDeParte expedienteId={expedienteId} parteId={parte.id} notas={parte.notas} />
             </div>
           </section>
-
-          <Abogados abogados={actuales} />
-          <AbogadosAnteriores abogados={anteriores} />
 
           <div className="mt-4 flex items-start gap-3 border-t border-linea pt-3">
             <Editar parte={parte} expedienteId={expedienteId} representables={representables} />
