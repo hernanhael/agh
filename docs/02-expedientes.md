@@ -235,9 +235,10 @@ Lo que sigue pendiente, dentro de la pestaña Resumen y no en la cabecera:
 - **Sin tildes ni mayúsculas**: "nicolas" encuentra a "Nicolás", "danos" encuentra "Daños". La consulta y el dato se reducen los dos a una forma comparable (`normalizarParaBuscar`, `10-normalizacion-de-texto.md`), así que da igual cómo se escriba de los dos lados.
 - **Por palabras, en cualquier orden**: "juan perez" encuentra "Pérez, Juan"; se exige que todas las palabras estén en el mismo expediente.
 - **Por juzgado y por OGA**: el juzgado con su nominación y la Oficina de Gestión Asociada también entran en la búsqueda, además de tener su propio filtro.
-- **Filtra en la misma tecla**: el filtrado corre en el cliente sobre la lista ya cargada, sin ida y vuelta al servidor. La consulta y los filtros se reflejan en la URL (`?q=`, `?estado=`, `?materia=`, `?fuero=`, `?juzgado=`, `?oga=`) para poder compartir o volver a una vista, y un enlace con esos parámetros abre el listado ya filtrado.
+- **Filtra en la misma tecla**: el filtrado corre en el cliente sobre la lista ya cargada, sin ida y vuelta al servidor. La consulta y los filtros se reflejan en la URL (`?q=`, `?estado=`, `?materia=`, `?juzgado=`, `?oga=`) para poder compartir o volver a una vista, y un enlace con esos parámetros abre el listado ya filtrado.
+- **Dentro del fuero**: la búsqueda recorre los expedientes del fuero en el que se está (§2.15).
 
-**Filtros del listado (hecho).** Cinco desplegables junto al buscador —**juzgado**, **OGA**, **estado**, **materia** y **fuero**— que se combinan entre sí y con la búsqueda. Solo ofrecen los valores que existen en los expedientes cargados, con la cantidad de cada uno: un desplegable con los siete estados posibles cuando el estudio usa dos invita a elegir combinaciones que no devuelven nada. Cuando hay algo filtrado aparecen el conteo ("3 de 12") y un botón para limpiar.
+**Filtros del listado (hecho).** Desplegables junto al buscador que se combinan entre sí y con la búsqueda. **Cada fuero tiene su juego** (`lib/datos/fueros.ts`): hoy todos ofrecen **juzgado**, **OGA**, **estado** y **materia**, salvo la Justicia de Paz, que no trabaja con Oficinas de Gestión Asociada y no tiene el de OGA. El filtro por fuero desapareció: el fuero ya se eligió en la entrada. Solo ofrecen los valores que existen en los expedientes **de ese fuero**, así que un juzgado de Familia no aparece en el desplegable de Civil y Comercial, con la cantidad de cada uno: un desplegable con los siete estados posibles cuando el estudio usa dos invita a elegir combinaciones que no devuelven nada. Cuando hay algo filtrado aparecen el conteo ("3 de 12") y un botón para limpiar.
 
 El filtro por juzgado compara el juzgado **con su nominación**: la VI y la IV del mismo fuero son dos juzgados distintos y no se mezclan. Mientras no exista el catálogo de juzgados de Configuración, los valores salen de lo que se cargó en los expedientes, así que dos formas de escribir el mismo juzgado son dos entradas del desplegable; la normalización del texto al guardar es lo que evita que eso pase seguido.
 
@@ -269,7 +270,7 @@ El calendario va dibujado a mano —no es el carácter 📅 puesto en el texto�
 
 Una audiencia cuya fecha ya pasó no se muestra en la burbuja —no es una audiencia fijada— pero sí en la ficha, marcada como pasada: la burbuja es para lo que queda por hacer.
 
-En pantalla angosta las dos columnas se apilan en el orden de la rejilla. Encabezado propio del área, fijo al hacer scroll, con el buscador, los filtros y la acción de alta.
+En pantalla angosta las dos columnas se apilan en el orden de la rejilla. Encabezado propio del fuero, fijo al hacer scroll, con la vuelta a los fueros, el nombre del fuero, el buscador, los filtros y la acción de alta.
 
 Este dibujo dejó de ser propio del área: vive en `components/Registro.tsx` y lo usan también las listas de tipos de proceso y de agentes, con la misma regla de color y de hover (`07-arquitectura.md` §3.6).
 
@@ -487,6 +488,30 @@ Pendiente:
 - Caracteres a confirmar con el abogado, y los que falten: cesionario, subrogante, concursado.
 - Aseguradoras con su póliza y su cobertura; peritos con su especialidad y su matrícula.
 
+### 2.15 Entrada por fuero
+
+**Hecho.** `/expedientes` no muestra los juicios de una vez: primero se elige el **fuero**. La entrada es una grilla de tarjetas, una por fuero, y cada una lleva solo su nombre. Adentro de cada fuero (`/expedientes/fuero/[fuero]`, por ejemplo `/expedientes/fuero/civil-y-comercial-comun`) aparecen sus procesos, con el buscador y **los filtros propios de ese fuero** (§2.8 y §2.9).
+
+- **Qué fueros aparecen**: todos los del catálogo, aunque todavía no tengan expedientes, y cualquier otro que figure en los datos. Un expediente viejo cargado con un nombre que ya no está en la lista no puede quedar inalcanzable.
+- **Orden alfabético por el nombre que se ve en la tarjeta**, no por el valor guardado: "Documentos y Locaciones" se ordena por la D y no por el "Civil en" con que se guarda. Hoy quedan Civil y Comercial Común, Cobros y Apremios, Documentos y Locaciones, Familia y Sucesiones y Justicia de Paz.
+- **La tarjeta**: el nombre centrado y apoyado justo encima de un emblema de tres íconos vinculados con el fuero, al pie y recortados por el borde inferior, como un sello que asoma. El título y el emblema son **dos zonas separadas** de la tarjeta: si el nombre ocupa dos renglones, crece hacia arriba y nunca toca los íconos.
+
+  | Fuero | Emblema |
+  |---|---|
+  | Civil y Comercial Común | apretón de manos · balanza · maletín |
+  | Cobros y Apremios | recibo · billete · monedas |
+  | Documentos y Locaciones | llave · documento firmado · casa |
+  | Familia y Sucesiones | bebé · personas · pergamino |
+  | Justicia de Paz | pluma · paloma · manos con corazón |
+
+- **Movimiento**: al cargar, las tarjetas suben y aparecen escalonadas. Al pasar el mouse —o al llegar con el teclado— la tarjeta se eleva y toma el tono del acento, los íconos suben uno detrás de otro y se tiñen, entra una flecha por la esquina y una línea de acento crece por el pie. Todo es CSS, sin JavaScript. Con `prefers-reduced-motion` no hay animación de entrada.
+- **Ida y vuelta**: adentro de un fuero, arriba del título, un botón "← Todos los fueros" vuelve a las tarjetas. Desde un expediente, el enlace de arriba vuelve **a su fuero** ("← Familia y Sucesiones"), que es de donde se llegó. "Nuevo expediente" desde un fuero abre el alta con ese fuero ya elegido.
+- **Enlaces viejos**: `/expedientes?fuero=…` redirige a la página del fuero conservando el resto de los parámetros (`?q=`, `?estado=`…).
+
+**Dónde se configura**: `lib/datos/fueros.ts` dice qué fueros hay, su nombre corto, su dirección y sus filtros. Los nombres cortos y los filtros de cada fuero están **[a confirmar]** con la práctica del estudio; es el único lugar que hay que tocar. Los emblemas están en `app/expedientes/TarjetaFuero.tsx`.
+
+Pendiente: un buscador general en la entrada, para encontrar un expediente sin saber de qué fuero es.
+
 ## 3. Funcionalidad
 
 ### MVP
@@ -508,7 +533,8 @@ Pendiente:
 - [ ] Panel de agentes seleccionados por expediente e informe de estado bajo demanda (hoy la ficha sugiere agentes por materia y tipo de proceso).
 - [ ] Vencimientos y tareas generados desde la historia, visibles en Agenda.
 - [x] Buscador del listado por número y por partes, sin tildes ni mayúsculas.
-- [x] Filtros por juzgado, OGA, estado, materia y fuero, combinables y reflejados en la URL.
+- [x] Entrada por fuero: tarjetas animadas en orden alfabético, con emblema por fuero (§2.15).
+- [x] Filtros propios de cada fuero (juzgado, OGA, estado, materia), combinables y reflejados en la URL.
 - [x] Semáforo de caducidad de instancia en el listado y en la ficha (§2.11).
 - [x] Ficha por pestañas, cada una con su ruta y su tecla de función (§2.13).
 - [x] Contabilidad del expediente: alta y baja de partidas, costo total, pagado contra previsto y desglose por concepto (§2.12).

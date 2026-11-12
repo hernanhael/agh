@@ -17,7 +17,7 @@ Lo hecho hasta ahora:
 - [x] **Configuración → Estudio**: datos del abogado y preferencias.
 - [x] **Configuración → Tipos de proceso**: alta, edición, desactivación y baja, con etapas; nueve ejemplos editables.
 - [x] **Configuración → Agentes**: alta, edición, duplicado y baja; cinco ejemplos editables.
-- [x] **Expedientes**: listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y filtros por juzgado, OGA, estado, materia y fuero; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
+- [x] **Expedientes**: entrada por fuero con tarjetas animadas, y dentro de cada fuero listado en registro con buscador instantáneo (por número y por partes, sin tildes ni mayúsculas) y sus propios filtros por juzgado, OGA, estado y materia; alta eligiendo el tipo de proceso; ficha con etapas y agentes sugeridos; edición y baja.
 - [x] **Caducidad de instancia** con tests (`lib/procesal`, `02-expedientes.md` §2.11): semáforo en el listado y en la ficha —en trámite, para caducidad a los seis meses (tres en incidentes), caduco— y radicación del expediente (juzgado, nominación, OGA) con la audiencia fijada.
 - [x] **Ficha del expediente por pestañas**, una ruta y una tecla de función por pestaña (`02-expedientes.md` §2.13).
 - [x] **Contabilidad del expediente**: partidas, costo total, pagado contra previsto y desglose por concepto (`02-expedientes.md` §2.12).

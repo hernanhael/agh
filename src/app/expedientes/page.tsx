@@ -1,46 +1,70 @@
-import { Aviso, mensajes } from "@/components/ui";
-import { FILTROS_VACIOS, hoy, listarExpedientes, listarTiposProceso } from "@/lib/datos";
-import { ListadoExpedientes } from "./ListadoExpedientes";
-
-/** Lee un parámetro de búsqueda que puede venir repetido. */
-function uno(valor: string | string[] | undefined): string {
-  return (Array.isArray(valor) ? valor[0] : valor) ?? "";
-}
+import { FolderOpen, Plus } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Aviso, claseBotonAccion, mensajes } from "@/components/ui";
+import { listarExpedientes } from "@/lib/datos";
+import { fuerosDisponibles } from "@/lib/datos/fueros";
+import { TarjetaFuero } from "./TarjetaFuero";
 
 /**
- * Área Expedientes.
+ * Área Expedientes: la entrada por fuero.
  *
- * El servidor trae los datos y el listado filtra en el cliente para que la
- * búsqueda responda en la misma tecla (`ListadoExpedientes`). Los filtros
- * iniciales se leen de la URL, así que un enlace con `?q=`, `?estado=` o
- * `?juzgado=` abre ya filtrado.
+ * Antes de ver un solo juicio se elige el fuero. Cada tarjeta lleva solo su
+ * nombre y abre `/expedientes/fuero/[fuero]`, donde están los procesos de ese
+ * fuero con sus propios filtros (`lib/datos/fueros`).
  *
- * El día de hoy se resuelve acá, en el servidor, y baja como dato: el semáforo
- * de caducidad de cada fila tiene que dar lo mismo en el HTML inicial y después
- * de la hidratación.
+ * Los enlaces viejos que traían `?fuero=` siguen andando: se mandan a la
+ * página del fuero con el resto de los filtros.
  */
 export default async function ExpedientesPage({ searchParams }: PageProps<"/expedientes">) {
   const parametros = await searchParams;
-  const [expedientes, tipos] = await Promise.all([listarExpedientes(), listarTiposProceso()]);
+  const expedientes = await listarExpedientes();
+  const fueros = fuerosDisponibles(expedientes);
+
+  const pedido = Array.isArray(parametros.fuero) ? parametros.fuero[0] : parametros.fuero;
+  if (pedido) {
+    const destino = fueros.find(
+      (fuero) => fuero.valor.toLowerCase() === pedido.toLowerCase() || fuero.slug === pedido,
+    );
+    if (destino) {
+      const resto = new URLSearchParams();
+      for (const [clave, valor] of Object.entries(parametros)) {
+        if (clave === "fuero" || valor === undefined) continue;
+        resto.set(clave, Array.isArray(valor) ? (valor[0] ?? "") : valor);
+      }
+      const cadena = resto.toString();
+      redirect(`/expedientes/fuero/${destino.slug}${cadena ? `?${cadena}` : ""}`);
+    }
+  }
+
   const { error, hecho } = mensajes(parametros);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <ListadoExpedientes
-        expedientes={expedientes}
-        tipos={tipos}
-        hoy={hoy()}
-        filtrosIniciales={{
-          ...FILTROS_VACIOS,
-          consulta: uno(parametros.q),
-          estado: uno(parametros.estado),
-          materia: uno(parametros.materia),
-          fuero: uno(parametros.fuero),
-          juzgado: uno(parametros.juzgado),
-          oga: uno(parametros.oga),
-        }}
-        aviso={<Aviso error={error} hecho={hecho} />}
-      />
+    <div className="mx-auto w-full max-w-5xl px-8 pb-12 pt-7">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <FolderOpen aria-hidden className="size-4 text-zinc-400 dark:text-zinc-500" />
+          <h1 className="text-[22px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Expedientes
+          </h1>
+        </div>
+        <Link href="/expedientes/nuevo" className={claseBotonAccion}>
+          <Plus aria-hidden className="size-4" />
+          Nuevo expediente
+        </Link>
+      </header>
+
+      <div className="mt-6">
+        <Aviso error={error} hecho={hecho} />
+      </div>
+
+      <nav aria-label="Fueros">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {fueros.map((fuero, orden) => (
+            <TarjetaFuero key={fuero.slug} fuero={fuero} orden={orden} />
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }

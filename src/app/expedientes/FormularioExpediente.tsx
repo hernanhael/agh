@@ -40,6 +40,7 @@ export function FormularioExpediente({
   acentuar,
   accion,
   textoBoton,
+  fueroInicial,
 }: {
   expediente?: Expediente;
   tiposProceso: TipoProceso[];
@@ -52,6 +53,8 @@ export function FormularioExpediente({
   acentuar: boolean;
   accion: (datos: FormData) => Promise<void>;
   textoBoton: string;
+  /** Fuero elegido de entrada en un alta: el del listado desde el que se llegó. */
+  fueroInicial?: string;
 }) {
   const [tipoProcesoId, setTipoProcesoId] = useState(
     expediente?.tipoProcesoId ?? tiposProceso[0]?.id ?? "",
@@ -261,7 +264,10 @@ export function FormularioExpediente({
         <Campo etiqueta="Fuero">
           <select
             name="fuero"
-            defaultValue={expediente?.fuero ?? FUEROS[0]}
+            defaultValue={
+              expediente?.fuero ??
+              (fueroInicial && FUEROS.includes(fueroInicial) ? fueroInicial : FUEROS[0])
+            }
             className={claseEntrada}
           >
             {FUEROS.map((fuero) => (

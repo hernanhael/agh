@@ -19,7 +19,10 @@ export default async function NuevoExpedientePage({
     listarRadicaciones(),
     obtenerEstudio(),
   ]);
-  const { error } = mensajes(await searchParams);
+  const parametros = await searchParams;
+  const { error } = mensajes(parametros);
+  // Desde el listado de un fuero se llega con `?fuero=`: el alta lo trae elegido.
+  const fuero = Array.isArray(parametros.fuero) ? parametros.fuero[0] : parametros.fuero;
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -51,6 +54,7 @@ export default async function NuevoExpedientePage({
             acentuar={estudio.correccionDeTildes}
             accion={nuevoExpediente}
             textoBoton="Crear expediente"
+            fueroInicial={fuero}
           />
         </div>
       )}

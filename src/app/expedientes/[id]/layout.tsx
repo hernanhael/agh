@@ -4,6 +4,7 @@ import { AvisoRuta } from "@/components/AvisoRuta";
 import { ChipProcesal } from "@/components/SituacionProcesal";
 import { Encabezado } from "@/components/ui";
 import { hoy, identificador } from "@/lib/datos";
+import { fueroDe } from "@/lib/datos/fueros";
 import { situacionCaducidad } from "@/lib/procesal";
 import { cargarExpediente } from "./cargar";
 import { LadosPlegados } from "./LadosPlegados";
@@ -32,14 +33,16 @@ export default async function ExpedienteLayout({ children, params }: LayoutProps
   const { id } = await params;
   const expediente = await cargarExpediente(id);
   const situacion = situacionCaducidad(expediente, hoy());
+  // Se vuelve al fuero del expediente, que es de donde se llegó.
+  const fuero = fueroDe(expediente);
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <Link
-        href="/expedientes"
+        href={`/expedientes/fuero/${fuero.slug}`}
         className="text-xs text-zinc-500 underline decoration-dotted underline-offset-2 dark:text-zinc-500"
       >
-        ← Expedientes
+        ← {fuero.nombre}
       </Link>
 
       <div className="mt-3">

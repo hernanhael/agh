@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, FileSearch, FolderOpen, FolderPlus, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileSearch, FolderPlus, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { claseBotonAccion, claseSelectFiltro, claseSelectFiltroActivo } from "@/components/ui";
@@ -14,11 +14,16 @@ import {
   type Filtros,
   type OpcionFiltro,
 } from "@/lib/datos/filtros";
+import type { CampoFiltro } from "@/lib/datos/fueros";
 import type { Expediente, TipoProceso } from "@/lib/datos/tipos";
 import { FilaExpediente } from "./FilaExpediente";
 
 /**
- * Listado de expedientes con búsqueda y filtros.
+ * Listado de los expedientes de un fuero, con búsqueda y filtros.
+ *
+ * Recibe solo los expedientes del fuero, y los filtros que muestra son los que
+ * el fuero define (`lib/datos/fueros`): cada fuero tiene su juego, y las
+ * opciones de cada desplegable salen de sus propios expedientes.
  *
  * Filtra **en el cliente**, sobre la lista que ya vino del servidor: el
  * resultado se actualiza en la misma tecla, sin ida y vuelta. Las reglas son
@@ -69,13 +74,27 @@ function SelectFiltro({
   );
 }
 
+/** Rótulo de cada filtro y de dónde salen sus opciones. */
+const FILTROS: Record<
+  CampoFiltro,
+  { etiqueta: string; opciones: keyof ReturnType<typeof opcionesDeFiltro> }
+> = {
+  juzgado: { etiqueta: "Juzgado", opciones: "juzgados" },
+  oga: { etiqueta: "OGA", opciones: "ogas" },
+  estado: { etiqueta: "Estado", opciones: "estados" },
+  materia: { etiqueta: "Materia", opciones: "materias" },
+};
+
 export function ListadoExpedientes({
+  fuero,
   expedientes,
   tipos,
   hoy,
   filtrosIniciales,
   aviso,
 }: {
+  /** El fuero que se está mirando: valor guardado, nombre y filtros propios. */
+  fuero: { valor: string; nombre: string; filtros: CampoFiltro[] };
   expedientes: Expediente[];
   tipos: TipoProceso[];
   /** Día de hoy en 'YYYY-MM-DD', para el semáforo de caducidad de cada fila. */
@@ -90,6 +109,8 @@ export function ListadoExpedientes({
   const mostrados = useMemo(() => aplicarFiltros(expedientes, filtros), [expedientes, filtros]);
   const porId = useMemo(() => new Map(tipos.map((tipo) => [tipo.id, tipo])), [tipos]);
   const filtrando = hayFiltros(filtros);
+  // El alta desde un fuero llega con el fuero ya elegido.
+  const enlaceNuevo = `/expedientes/nuevo?fuero=${encodeURIComponent(fuero.valor)}`;
 
   // La búsqueda queda en la URL para poder compartirla o volver a ella, pero se
   // escribe con `replaceState` y no con el router: no hace falta navegar si el
@@ -97,14 +118,13 @@ export function ListadoExpedientes({
   useEffect(() => {
     const parametros = new URLSearchParams();
     if (filtros.consulta.trim()) parametros.set("q", filtros.consulta.trim());
-    if (filtros.estado) parametros.set("estado", filtros.estado);
-    if (filtros.materia) parametros.set("materia", filtros.materia);
-    if (filtros.fuero) parametros.set("fuero", filtros.fuero);
-    if (filtros.juzgado) parametros.set("juzgado", filtros.juzgado);
-    if (filtros.oga) parametros.set("oga", filtros.oga);
+    // El nombre del filtro es también el del parámetro: ?juzgado=, ?oga=…
+    for (const campo of fuero.filtros) {
+      if (filtros[campo]) parametros.set(campo, filtros[campo]);
+    }
     const cadena = parametros.toString();
     window.history.replaceState(null, "", cadena ? `?${cadena}` : window.location.pathname);
-  }, [filtros]);
+  }, [filtros, fuero.filtros]);
 
   function cambiar(campo: keyof Filtros, valor: string) {
     setFiltros((actuales) => ({ ...actuales, [campo]: valor }));
@@ -115,13 +135,26 @@ export function ListadoExpedientes({
       <header className="sticky top-0 z-10 border-b border-linea bg-background/90 backdrop-blur">
         <div className="mx-auto max-w-5xl px-8 pb-3 pt-7">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex items-center gap-2">
-              <FolderOpen aria-hidden className="size-4 text-zinc-400 dark:text-zinc-500" />
-              <h1 className="text-[22px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                Expedientes
+            <div>
+              {/*
+                La vuelta al panel de fueros, a la vista y con forma de botón:
+                es la salida de esta pantalla y no un dato más del encabezado.
+              */}
+              <Link
+                href="/expedientes"
+                className="group -ml-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-acento-suave hover:text-acento focus-visible:outline-2 focus-visible:outline-acento dark:text-zinc-400"
+              >
+                <ArrowLeft
+                  aria-hidden
+                  className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5"
+                />
+                Todos los fueros
+              </Link>
+              <h1 className="mt-1 text-[22px] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+                {fuero.nombre}
               </h1>
             </div>
-            <Link href="/expedientes/nuevo" className={claseBotonAccion}>
+            <Link href={enlaceNuevo} className={claseBotonAccion}>
               <Plus aria-hidden className="size-4" />
               Nuevo expediente
             </Link>
@@ -153,36 +186,15 @@ export function ListadoExpedientes({
               ) : null}
             </span>
 
-            <SelectFiltro
-              etiqueta="Juzgado"
-              valor={filtros.juzgado}
-              opciones={opciones.juzgados}
-              onChange={(valor) => cambiar("juzgado", valor)}
-            />
-            <SelectFiltro
-              etiqueta="OGA"
-              valor={filtros.oga}
-              opciones={opciones.ogas}
-              onChange={(valor) => cambiar("oga", valor)}
-            />
-            <SelectFiltro
-              etiqueta="Estado"
-              valor={filtros.estado}
-              opciones={opciones.estados}
-              onChange={(valor) => cambiar("estado", valor)}
-            />
-            <SelectFiltro
-              etiqueta="Materia"
-              valor={filtros.materia}
-              opciones={opciones.materias}
-              onChange={(valor) => cambiar("materia", valor)}
-            />
-            <SelectFiltro
-              etiqueta="Fuero"
-              valor={filtros.fuero}
-              opciones={opciones.fueros}
-              onChange={(valor) => cambiar("fuero", valor)}
-            />
+            {fuero.filtros.map((campo) => (
+              <SelectFiltro
+                key={campo}
+                etiqueta={FILTROS[campo].etiqueta}
+                valor={filtros[campo]}
+                opciones={opciones[FILTROS[campo].opciones]}
+                onChange={(valor) => cambiar(campo, valor)}
+              />
+            ))}
 
             {filtrando ? (
               <>
@@ -237,9 +249,9 @@ export function ListadoExpedientes({
           <div className="rounded-lg border border-dashed border-linea-fuerte px-4 py-14 text-center">
             <FolderPlus aria-hidden className="mx-auto size-7 text-zinc-300 dark:text-zinc-600" />
             <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
-              Todavía no hay expedientes.
+              Todavía no hay expedientes en {fuero.nombre}.
             </p>
-            <Link href="/expedientes/nuevo" className={`${claseBotonAccion} mt-3`}>
+            <Link href={enlaceNuevo} className={`${claseBotonAccion} mt-3`}>
               <Plus aria-hidden className="size-4" />
               Cargar el primero
             </Link>

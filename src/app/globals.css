@@ -112,8 +112,22 @@ input[type="search"]::-webkit-search-decoration {
   animation: aparecer 220ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
+/* Entrada de las tarjetas de fuero en /expedientes: más recorrido y más tiempo
+   que las filas, porque es una portada y se ve una vez, no a cada tecla. */
+@keyframes aparecer-tarjeta {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+}
+
+.aparece-tarjeta {
+  animation: aparecer-tarjeta 520ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .aparece {
+  .aparece,
+  .aparece-tarjeta {
     animation: none;
   }
 }
