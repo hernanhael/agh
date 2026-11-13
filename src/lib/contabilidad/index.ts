@@ -5,7 +5,7 @@
  * así que corren igual en el servidor y en el cliente y se testean sin montar
  * datos.
  */
-export { formatoImporte, importeDesdeTexto } from "./importe";
+export { formatoImporte, importeDesdeTexto, importeParaEditar } from "./importe";
 export {
   resumenContable,
   type ResumenConcepto,

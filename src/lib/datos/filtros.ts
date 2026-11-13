@@ -36,7 +36,8 @@ export function oficinaGestion(expediente: Expediente): string {
 }
 
 /**
- * Texto sobre el que se busca: número, carátula, partes, objeto y materia,
+ * Texto sobre el que se busca: número, carátula, partes, objeto, materia,
+ * juzgado, OGA y etiquetas,
  * todo reducido a la forma comparable.
  */
 function textoBuscable(expediente: Expediente): string {
@@ -51,6 +52,7 @@ function textoBuscable(expediente: Expediente): string {
       expediente.materia,
       nombreJuzgado(expediente),
       oficinaGestion(expediente),
+      ...(expediente.etiquetas ?? []),
     ].join(" "),
   );
 }
@@ -79,6 +81,8 @@ export interface Filtros {
   juzgado: string;
   /** Oficina de Gestión Asociada. */
   oga: string;
+  /** Una de las etiquetas del abogado. */
+  etiqueta: string;
 }
 
 export const FILTROS_VACIOS: Filtros = {
@@ -88,6 +92,7 @@ export const FILTROS_VACIOS: Filtros = {
   fuero: "",
   juzgado: "",
   oga: "",
+  etiqueta: "",
 };
 
 /** Si hay algún filtro puesto (para mostrar el conteo y el botón de limpiar). */
@@ -98,13 +103,14 @@ export function hayFiltros(filtros: Filtros): boolean {
     filtros.materia !== "" ||
     filtros.fuero !== "" ||
     filtros.juzgado !== "" ||
-    filtros.oga !== ""
+    filtros.oga !== "" ||
+    filtros.etiqueta !== ""
   );
 }
 
 /**
  * Aplica la búsqueda y los filtros. Un filtro vacío no filtra, y los de
- * materia, fuero, juzgado y OGA comparan sin tildes ni mayúsculas por las
+ * materia, fuero, juzgado, OGA y etiqueta comparan sin tildes ni mayúsculas por las
  * mismas razones que la búsqueda.
  */
 export function aplicarFiltros(expedientes: Expediente[], filtros: Filtros): Expediente[] {
@@ -112,6 +118,7 @@ export function aplicarFiltros(expedientes: Expediente[], filtros: Filtros): Exp
   const fuero = normalizarParaBuscar(filtros.fuero);
   const juzgado = normalizarParaBuscar(filtros.juzgado);
   const oga = normalizarParaBuscar(filtros.oga);
+  const etiqueta = normalizarParaBuscar(filtros.etiqueta);
 
   return expedientes.filter((expediente) => {
     if (filtros.estado && expediente.estado !== filtros.estado) return false;
@@ -119,6 +126,12 @@ export function aplicarFiltros(expedientes: Expediente[], filtros: Filtros): Exp
     if (fuero && normalizarParaBuscar(expediente.fuero) !== fuero) return false;
     if (juzgado && normalizarParaBuscar(nombreJuzgado(expediente)) !== juzgado) return false;
     if (oga && normalizarParaBuscar(oficinaGestion(expediente)) !== oga) return false;
+    if (
+      etiqueta &&
+      !(expediente.etiquetas ?? []).some((propia) => normalizarParaBuscar(propia) === etiqueta)
+    ) {
+      return false;
+    }
     return coincide(expediente, filtros.consulta);
   });
 }
@@ -143,6 +156,7 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
   fueros: OpcionFiltro[];
   juzgados: OpcionFiltro[];
   ogas: OpcionFiltro[];
+  etiquetas: OpcionFiltro[];
 } {
   const contar = (valores: string[]): Map<string, number> => {
     const cuenta = new Map<string, number>();
@@ -158,6 +172,8 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
   const fueros = contar(expedientes.map((expediente) => expediente.fuero));
   const juzgados = contar(expedientes.map(nombreJuzgado));
   const ogas = contar(expedientes.map(oficinaGestion));
+  // Un expediente cuenta una vez por cada etiqueta que tiene.
+  const etiquetas = contar(expedientes.flatMap((expediente) => expediente.etiquetas ?? []));
 
   const alfabetico = (a: OpcionFiltro, b: OpcionFiltro) =>
     a.etiqueta.localeCompare(b.etiqueta, "es");
@@ -179,5 +195,6 @@ export function opcionesDeFiltro(expedientes: Expediente[]): {
     fueros: listar(fueros),
     juzgados: listar(juzgados),
     ogas: listar(ogas),
+    etiquetas: listar(etiquetas),
   };
 }

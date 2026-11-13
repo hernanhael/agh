@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Aviso, claseTarjeta, Encabezado, mensajes } from "@/components/ui";
 import {
   hoy,
+  listarEtiquetas,
   listarMaterias,
   listarRadicaciones,
   listarTiposProcesoActivos,
@@ -13,10 +14,11 @@ import { FormularioExpediente } from "../FormularioExpediente";
 export default async function NuevoExpedientePage({
   searchParams,
 }: PageProps<"/expedientes/nuevo">) {
-  const [tipos, materias, radicaciones, estudio] = await Promise.all([
+  const [tipos, materias, radicaciones, etiquetas, estudio] = await Promise.all([
     listarTiposProcesoActivos(),
     listarMaterias(),
     listarRadicaciones(),
+    listarEtiquetas(),
     obtenerEstudio(),
   ]);
   const parametros = await searchParams;
@@ -49,6 +51,7 @@ export default async function NuevoExpedientePage({
             tiposProceso={tipos}
             materias={materias}
             radicaciones={radicaciones}
+            etiquetasConocidas={etiquetas}
             centroJudicialHabitual={estudio.centroJudicialHabitual}
             hoy={hoy()}
             acentuar={estudio.correccionDeTildes}

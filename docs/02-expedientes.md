@@ -35,22 +35,35 @@ La **carátula** se escribe o se pega como venga del Portal del SAE: el sistema 
 | Rol del cliente | Actor, demandado, tercero, heredero, acreedor, otro. |
 | Estado | En mediación, en trámite, suspendido, con sentencia, en ejecución, archivado, paralizado. |
 | Etapa actual | Etapa del tipo de proceso en la que está el expediente. |
-| Monto | Monto reclamado o base regulatoria, con moneda y fecha. |
-| Fechas clave | Inicio de mediación, inicio de demanda, radicación, sentencia, firmeza. |
+| Monto | Monto reclamado o base regulatoria, en pesos o dólares, con la fecha a la que está expresado (si no se indica, la del día en que se cargó). Se escribe como en Argentina —"1.500.000,50"— y se guarda en centavos, como los importes de la contabilidad (§2.12). Un monto que no se entiende es un error, no un vacío. |
+| Fechas clave | Inicio de mediación, demanda, radicación, sentencia, firmeza. Son mojones: no mueven la etapa ni el último movimiento, que tienen sus propios campos. |
 | Notas | Texto del abogado, con **negrita, itálica y subrayado**. Se edita con un clic sobre el propio recuadro (ver abajo). |
-| Etiquetas | Etiquetas para agrupar expedientes. |
+| Etiquetas | Etiquetas libres para agrupar expedientes, separadas por coma. Se guardan con forma de título y sin repetidas ("urgente" y "URGENTE" son una), y el formulario ofrece con un clic las que ya se usan en otros expedientes. Se filtran en el listado de cada fuero y entran en la búsqueda. |
 
 **La tabla es lo que el expediente guarda; la pestaña Datos muestra menos, a propósito.** La ficha no es el volcado del registro: cada dato que sobra es un dato que hay que descartar para encontrar el que se busca. Muestra **siete**, en tres grupos separados por una línea fina —no por un recuadro cada uno, que serían cuadros dentro del cuadro de la pestaña—, y cada grupo encabeza con su respuesta:
 
 | Grupo | Encabeza | Debajo |
 |---|---|---|
-| Objeto | La materia de la causa, con el tipo de proceso al lado entre guiones (`-ordinario-`) | — |
+| Objeto | La materia de la causa, con el tipo de proceso al lado entre guiones (`-ordinario-`) | El monto, las fechas clave y las etiquetas, **solo los que estén cargados** |
 | Juzgado · Etapa · Último movimiento, en una fila | El juzgado con su nominación; la etapa; la fecha del último movimiento con el tiempo transcurrido ("hace 40 días") | Centro Judicial y OGA; la fecha desde la que corre la etapa; el alta en el sistema |
 | Notas | — | El texto de la nota |
 
 El dato se llama **objeto** y no materia porque así lo nombran el SAE y el abogado: es lo que dice la carátula después del "s/". La columna que se guarda sigue siendo `materia`.
 
 Lo que no está en la ficha, está donde no hace falta repetirlo: el **número** y la **carátula** en la cabecera (§2.7); el **estado** y la **clase**, resueltos en el semáforo de caducidad (§2.11); el **fuero**, dicho por el juzgado, que se elige de la misma lista; el **tipo de proceso** completo en Resumen, Historia e IA; y las **partes** en su pestaña (§2.14). Todo sigue editándose en el formulario del expediente, que se despliega al pie de la ficha.
+
+**Debajo del objeto van el monto, las fechas clave y las etiquetas, y solo los que estén cargados.** Un expediente recién dado de alta no tiene ninguno, y cinco fechas con un guion cada una serían cinco renglones que leer para enterarse de que no hay nada. Van en una tira que se acomoda sola —son de uno a siete datos sueltos— y no en la rejilla de dos columnas de los otros grupos, que dejaría huecos según cuántos haya. Las etiquetas, como pastillas grises: en la ficha no hay color (ver el comentario de `datos/page.tsx`).
+
+**Reglas del formulario al guardar** (`lib/datos/expedientes.ts`, con tests):
+
+- Todo lo escrito se normaliza (`10-normalizacion-de-texto.md`); la nota no, porque lleva marcas de formato y viaja en un campo oculto para que guardar otro dato no la borre.
+- Número y año únicos por centro judicial, **contando los de la papelera**: el aviso pide restaurar en lugar de volver a cargar.
+- Cambiar de etapa pone la fecha "desde" en hoy y cuenta como movimiento; sin cambio de etapa, un último movimiento vacío conserva el anterior.
+- Una fecha mal escrita se guarda vacía, nunca a medias. La audiencia sin fecha no guarda ni tipo ni hora, y la hora es de 24 horas.
+- El monto se lee como `importeDesdeTexto` de la contabilidad ("1.500.000,50", "$ 980", "1234.56"); si no se entiende, el guardado falla con el motivo. Vaciar el monto borra también su concepto, su moneda y su fecha.
+- Las etiquetas se separan por coma, se formatean como título y se deduplican sin mirar tildes ni mayúsculas.
+
+**Baja en dos pasos.** "Mandar a la papelera", al pie del formulario, marca `enPapeleraDesde` (el `deleted_at` del modelo): el expediente sale de los listados, del conteo de Configuración y de las tarjetas, pero se sigue pudiendo abrir —con un aviso ámbar y el botón Restaurar en la cabecera del cuadro— y conserva su historia, sus partes y su contabilidad. En `/expedientes` aparece "Papelera (n)" solo cuando tiene algo. Desde `/expedientes/papelera` se restaura o se **borra para siempre**, que es el único camino al borrado definitivo y se lleva todo lo del expediente: antes la baja dejaba las partes, la historia y las partidas huérfanas en el almacén.
 
 **La nota se edita con un clic sobre el texto, no con un botón ni un formulario**, que es lo que corresponde a algo que se retoca diez veces. En modo edición el recuadro toma el papel y el borde punteado de "próximo en esta pestaña" —el mismo recurso con el que la aplicación dice "esto no es definitivo"— y aparecen cuatro controles en su esquina: **B**, *I* y <u>U</u>, escritos cada uno con su propio formato, y una flecha que restaura la nota como estaba al abrirla. Se guarda al hacer clic afuera, con `Escape` o con `alt+n` de nuevo; la flecha es la que deshace, así que ninguna de las tres formas de salir pierde texto.
 
@@ -242,9 +255,10 @@ Lo que sigue pendiente, dentro de la pestaña Resumen y no en la cabecera:
 
 El filtro por juzgado compara el juzgado **con su nominación**: la VI y la IV del mismo fuero son dos juzgados distintos y no se mezclan. Mientras no exista el catálogo de juzgados de Configuración, los valores salen de lo que se cargó en los expedientes, así que dos formas de escribir el mismo juzgado son dos entradas del desplegable; la normalización del texto al guardar es lo que evita que eso pase seguido.
 
+El filtro por **etiqueta** está en todos los fueros y cuenta, para cada etiqueta, los expedientes que la tienen.
+
 Pendiente:
 
-- Filtrar también por etiqueta cuando existan las etiquetas.
 - Texto completo dentro de la historia de un expediente o de todo el estudio.
 - Búsqueda semántica (mismo índice que usa el RAG) para preguntas del tipo "¿en qué expedientes se discutió la prescripción bienal?".
 
@@ -518,9 +532,9 @@ Pendiente: un buscador general en la entrada, para encontrar un expediente sin s
 
 - [x] Alta, edición y baja de expedientes, eligiendo el tipo de proceso en el alta.
 - [x] Carátula normalizada, con sus componentes guardados por separado (`10-normalizacion-de-texto.md`).
-- [ ] Baja lógica y archivo de expedientes (hoy la baja es definitiva).
+- [x] Baja en dos pasos con **papelera**: "Mandar a la papelera" saca el expediente de los listados sin tocar su historia, sus partes ni su contabilidad; se abre igual, con un aviso y el botón para restaurarlo. El borrado definitivo se hace solo desde la papelera (`/expedientes/papelera`) y se lleva todo lo del expediente. El número de un expediente en la papelera sigue ocupado. El **archivo** del juzgado no es esto: es el estado `archivado`, que se filtra en el listado.
 - [x] Nómina de partes en renglones, repartida entre el pleito —actora, demandada, citada en garantía y terceros— y los auxiliares del juzgado, con el abogado al lado del nombre; la comparecencia solo cuando trae una consecuencia, la parte fallecida apagada y al final de su lado, con sus herederos vinculados, los abogados colgando de su representado, el arranque desde la carátula y el recorrido con el teclado por lado. La ficha de cada parte en una ventana superpuesta que sigue a las flechas, con los datos que se copian con un clic, sus abogados —los anteriores plegados— y la nota editable con `alt+n` (§2.14).
-- [ ] Ficha completa: montos, fechas clave, etiquetas.
+- [x] Ficha completa: monto, fechas clave y etiquetas, con filtro por etiqueta en el listado.
 - [x] Tipos de proceso configurables (crear, editar, desactivar, borrar) con ejemplos iniciales para ordinario, sumarísimo, sumario, ejecutivo, monitorio, expropiación, sucesorio y desalojo.
 - [ ] Etapas con historial de transiciones y advertencia en transiciones no previstas (hoy se guarda la etapa actual y desde cuándo).
 - [x] Historia del expediente: actuaciones del juzgado, presentaciones del estudio, de la contraria y de los auxiliares, documentos y notas, cada una con su texto completo consultable; el decreto que abre etapa distinguido y moviendo al expediente; filtros por lado de la causa (§2.3).

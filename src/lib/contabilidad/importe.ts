@@ -12,13 +12,21 @@
  */
 
 /** Centavos a pesos con separador de miles: 123456 → "$ 1.234,56". */
-export function formatoImporte(centavos: number): string {
+export function formatoImporte(centavos: number, simbolo = "$"): string {
   const entero = Math.round(centavos);
   const signo = entero < 0 ? "-" : "";
   const absoluto = Math.abs(entero);
   const pesos = String(Math.floor(absoluto / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   const resto = String(absoluto % 100).padStart(2, "0");
-  return `${signo}$ ${pesos},${resto}`;
+  return `${signo}${simbolo} ${pesos},${resto}`;
+}
+
+/**
+ * Centavos a texto para mostrar en un campo de formulario: 123456 → "1.234,56".
+ * Es la forma que `importeDesdeTexto` vuelve a leer igual.
+ */
+export function importeParaEditar(centavos: number): string {
+  return formatoImporte(centavos, "").trim();
 }
 
 /**

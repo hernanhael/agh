@@ -34,9 +34,15 @@ export {
   actualizarNotasExpediente,
   crearExpediente,
   eliminarExpediente,
+  enPapelera,
+  listarEtiquetas,
   listarExpedientes,
+  listarPapelera,
   listarRadicaciones,
+  mandarAPapelera,
+  normalizarEtiquetas,
   obtenerExpediente,
+  restaurarExpediente,
   type EntradaExpediente,
 } from "./expedientes";
 export {

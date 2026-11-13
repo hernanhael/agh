@@ -156,7 +156,69 @@ export interface Expediente {
   audienciaTipo?: string;
   audienciaFecha?: string;
   audienciaHora?: string;
+
+  /**
+   * Fechas clave de la causa (docs/02-expedientes.md §2.1). Vacías si no se
+   * cargaron. No mueven nada por sí solas —el último movimiento y la etapa
+   * tienen sus propios campos—: son mojones que el abogado quiere tener a mano.
+   */
+  fechaMediacion?: string;
+  fechaDemanda?: string;
+  fechaRadicacion?: string;
+  fechaSentencia?: string;
+  fechaFirmeza?: string;
+
+  /**
+   * Monto del juicio **en centavos**, como los importes de la contabilidad
+   * (`lib/contabilidad/importe`). Sin monto, `montoCentavos` falta y los otros
+   * tres no significan nada.
+   */
+  montoCentavos?: number;
+  /** Qué es el monto: lo que se reclama o la base para regular honorarios. */
+  montoConcepto?: ConceptoMonto;
+  moneda?: Moneda;
+  /** A qué fecha está expresado el monto: un peso de 2026 no vale lo que uno de 2029. */
+  montoFecha?: string;
+
+  /** Etiquetas libres del abogado para agrupar expedientes. */
+  etiquetas?: string[];
+
+  /**
+   * Cuándo se mandó a la papelera. Vacío o ausente si está vigente. Es la baja
+   * lógica de `deleted_at` (docs/06-modelo-de-datos.md): un expediente en la
+   * papelera no aparece en los listados pero conserva su historia, sus partes y
+   * su contabilidad, y se puede restaurar.
+   */
+  enPapeleraDesde?: string;
 }
+
+export type ConceptoMonto = "reclamado" | "base_regulatoria";
+export type Moneda = "ARS" | "USD";
+
+export const CONCEPTOS_MONTO: ReadonlyArray<{ valor: ConceptoMonto; etiqueta: string }> = [
+  { valor: "reclamado", etiqueta: "Monto reclamado" },
+  { valor: "base_regulatoria", etiqueta: "Base regulatoria" },
+];
+
+export const MONEDAS: ReadonlyArray<{ valor: Moneda; etiqueta: string; simbolo: string }> = [
+  { valor: "ARS", etiqueta: "Pesos", simbolo: "$" },
+  { valor: "USD", etiqueta: "Dólares", simbolo: "US$" },
+];
+
+/**
+ * Las fechas clave en el orden en que ocurren en un juicio. El formulario y la
+ * ficha las recorren con esta lista, así que agregar una es agregar un renglón.
+ */
+export const FECHAS_CLAVE: ReadonlyArray<{
+  campo: "fechaMediacion" | "fechaDemanda" | "fechaRadicacion" | "fechaSentencia" | "fechaFirmeza";
+  etiqueta: string;
+}> = [
+  { campo: "fechaMediacion", etiqueta: "Inicio de mediación" },
+  { campo: "fechaDemanda", etiqueta: "Demanda" },
+  { campo: "fechaRadicacion", etiqueta: "Radicación" },
+  { campo: "fechaSentencia", etiqueta: "Sentencia" },
+  { campo: "fechaFirmeza", etiqueta: "Firmeza" },
+];
 
 /** Datos del estudio y preferencias: `profiles`. */
 export interface Estudio {

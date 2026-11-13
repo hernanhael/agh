@@ -29,7 +29,13 @@ export interface Fuero {
 }
 
 /** Filtros de un fuero que todavía no tiene los suyos definidos. */
-const FILTROS_COMUNES: ReadonlyArray<CampoFiltro> = ["juzgado", "oga", "estado", "materia"];
+const FILTROS_COMUNES: ReadonlyArray<CampoFiltro> = [
+  "juzgado",
+  "oga",
+  "estado",
+  "materia",
+  "etiqueta",
+];
 
 /**
  * Lo propio de cada fuero del catálogo. Los nombres cortos y los filtros están
@@ -45,7 +51,7 @@ const PROPIOS: Record<string, { nombre?: string; filtros?: ReadonlyArray<CampoFi
   "Cobros y Apremios": {},
   "Familia y Sucesiones": {},
   // La Justicia de Paz no trabaja con Oficinas de Gestión Asociada.
-  Paz: { nombre: "Justicia de Paz", filtros: ["juzgado", "estado", "materia"] },
+  Paz: { nombre: "Justicia de Paz", filtros: ["juzgado", "estado", "materia", "etiqueta"] },
 };
 
 /** "Civil y Comercial Común" → "civil-y-comercial-comun". */

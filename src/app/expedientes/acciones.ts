@@ -15,6 +15,8 @@ import {
   eliminarEntradaHistoria,
   eliminarExpediente,
   eliminarGasto,
+  mandarAPapelera,
+  restaurarExpediente,
   eliminarParte,
   sumarParteDeCaratula,
   type CargaDeEntrada,
@@ -22,6 +24,8 @@ import {
   type CentroJudicial,
   type ClaseExpediente,
   type Comparecencia,
+  type ConceptoMonto,
+  type Moneda,
   type Genero,
   type ConceptoGasto,
   type EntradaExpediente,
@@ -65,6 +69,16 @@ function entrada(datos: FormData): EntradaExpediente {
     audienciaTipo: texto(datos, "audienciaTipo"),
     audienciaFecha: texto(datos, "audienciaFecha"),
     audienciaHora: texto(datos, "audienciaHora"),
+    fechaMediacion: texto(datos, "fechaMediacion"),
+    fechaDemanda: texto(datos, "fechaDemanda"),
+    fechaRadicacion: texto(datos, "fechaRadicacion"),
+    fechaSentencia: texto(datos, "fechaSentencia"),
+    fechaFirmeza: texto(datos, "fechaFirmeza"),
+    monto: texto(datos, "monto"),
+    montoConcepto: texto(datos, "montoConcepto") as ConceptoMonto,
+    moneda: texto(datos, "moneda") as Moneda,
+    montoFecha: texto(datos, "montoFecha"),
+    etiquetas: texto(datos, "etiquetas"),
   };
 }
 
@@ -132,13 +146,46 @@ export async function guardarNotasParte(
   return { ok: true };
 }
 
+/*
+ * Baja del expediente en dos pasos: primero a la papelera, de donde se puede
+ * restaurar, y desde ahí, si hace falta, el borrado definitivo.
+ */
+
+/** Manda el expediente a la papelera y vuelve al listado de su fuero. */
+export async function enviarAPapelera(datos: FormData): Promise<void> {
+  const id = texto(datos, "id");
+  const resultado = await mandarAPapelera(id);
+  revalidatePath("/expedientes", "layout");
+  if (!resultado.ok) {
+    redirect(`/expedientes/${id}?error=${encodeURIComponent(resultado.error)}`);
+  }
+  const aviso = `"${resultado.valor.caratula}" quedó en la papelera. Se puede restaurar desde ahí.`;
+  redirect(`/expedientes?fuero=${encodeURIComponent(resultado.valor.fuero)}&hecho=${encodeURIComponent(aviso)}`);
+}
+
+/**
+ * Saca el expediente de la papelera. Vuelve a donde estaba el abogado: la
+ * papelera si restauró desde la lista, la ficha si lo hizo desde el aviso.
+ */
+export async function restaurar(datos: FormData): Promise<void> {
+  const id = texto(datos, "id");
+  const resultado = await restaurarExpediente(id);
+  revalidatePath("/expedientes", "layout");
+  const parametro = resultado.ok
+    ? `hecho=${encodeURIComponent(`Se restauró "${resultado.valor.caratula}".`)}`
+    : `error=${encodeURIComponent(resultado.error)}`;
+  const destino = texto(datos, "volverA") === "papelera" ? "/expedientes/papelera" : `/expedientes/${id}`;
+  redirect(`${destino}?${parametro}`);
+}
+
+/** Borra para siempre un expediente de la papelera, con todo lo suyo. */
 export async function borrarExpediente(datos: FormData): Promise<void> {
   const resultado = await eliminarExpediente(texto(datos, "id"));
-  revalidatePath("/expedientes");
+  revalidatePath("/expedientes", "layout");
   const parametro = resultado.ok
-    ? `hecho=${encodeURIComponent(`Se borró "${resultado.valor}".`)}`
+    ? `hecho=${encodeURIComponent(`Se borró "${resultado.valor}" para siempre.`)}`
     : `error=${encodeURIComponent(resultado.error)}`;
-  redirect(`/expedientes?${parametro}`);
+  redirect(`/expedientes/papelera?${parametro}`);
 }
 
 /*

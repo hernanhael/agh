@@ -16,9 +16,15 @@ import {
   actualizarExpediente,
   actualizarNotasExpediente,
   crearExpediente,
+  eliminarExpediente,
+  listarEtiquetas,
   listarExpedientes,
+  listarPapelera,
+  mandarAPapelera,
   obtenerExpediente,
+  restaurarExpediente,
 } from "./expedientes";
+import { crearGasto, listarGastos } from "./gastos";
 import {
   actualizarEntradaHistoria,
   crearEntradaHistoria,
@@ -83,6 +89,16 @@ const EXPEDIENTE_BASE = {
   audienciaTipo: "",
   audienciaFecha: "",
   audienciaHora: "",
+  fechaMediacion: "",
+  fechaDemanda: "",
+  fechaRadicacion: "",
+  fechaSentencia: "",
+  fechaFirmeza: "",
+  monto: "",
+  montoConcepto: "reclamado" as const,
+  moneda: "ARS" as const,
+  montoFecha: "",
+  etiquetas: "",
 };
 
 describe("almacén", () => {
@@ -901,5 +917,137 @@ describe("historia del expediente", () => {
     await crearEntradaHistoria({ ...DECRETO, expedienteId: uno });
     expect(await listarHistoria(uno)).toHaveLength(1);
     expect(await listarHistoria(otro.valor.id)).toHaveLength(0);
+  });
+});
+
+/*
+ * Lo que completa la ficha de Datos (docs/02-expedientes.md §2.1): fechas
+ * clave, monto y etiquetas, y la baja en dos pasos con la papelera.
+ */
+describe("ficha completa del expediente", () => {
+  it("guarda las fechas clave válidas y descarta las mal escritas", async () => {
+    const creado = await crearExpediente({
+      ...EXPEDIENTE_BASE,
+      fechaMediacion: "2025-11-03",
+      fechaDemanda: "2026-02-10",
+      fechaSentencia: "2026-02-30", // no existe
+      fechaFirmeza: "10/03/2026", // no es el formato que se guarda
+    });
+    if (!creado.ok) throw new Error(creado.error);
+    expect(creado.valor.fechaMediacion).toBe("2025-11-03");
+    expect(creado.valor.fechaDemanda).toBe("2026-02-10");
+    expect(creado.valor.fechaRadicacion).toBe("");
+    expect(creado.valor.fechaSentencia).toBe("");
+    expect(creado.valor.fechaFirmeza).toBe("");
+  });
+
+  it("guarda el monto en centavos, con su moneda y su fecha", async () => {
+    const creado = await crearExpediente({
+      ...EXPEDIENTE_BASE,
+      monto: "$ 1.500.000,50",
+      montoConcepto: "base_regulatoria",
+      moneda: "USD",
+      montoFecha: "2026-03-01",
+    });
+    if (!creado.ok) throw new Error(creado.error);
+    expect(creado.valor.montoCentavos).toBe(150_000_050);
+    expect(creado.valor.montoConcepto).toBe("base_regulatoria");
+    expect(creado.valor.moneda).toBe("USD");
+    expect(creado.valor.montoFecha).toBe("2026-03-01");
+  });
+
+  it("sin fecha, el monto queda expresado al día en que se cargó", async () => {
+    const creado = await crearExpediente({ ...EXPEDIENTE_BASE, monto: "2000" });
+    if (!creado.ok) throw new Error(creado.error);
+    expect(creado.valor.montoCentavos).toBe(200_000);
+    expect(creado.valor.montoFecha).toBe(hoy());
+  });
+
+  it("un monto ilegible es un error, no un vacío", async () => {
+    const creado = await crearExpediente({ ...EXPEDIENTE_BASE, monto: "un millón" });
+    expect(creado.ok).toBe(false);
+  });
+
+  it("borrar el monto borra también su moneda y su fecha", async () => {
+    const creado = await crearExpediente({ ...EXPEDIENTE_BASE, monto: "2000", moneda: "USD" });
+    if (!creado.ok) throw new Error(creado.error);
+    const editado = await actualizarExpediente(creado.valor.id, { ...EXPEDIENTE_BASE, monto: "" });
+    if (!editado.ok) throw new Error(editado.error);
+    const leido = await obtenerExpediente(creado.valor.id);
+    expect(leido?.montoCentavos).toBeUndefined();
+    expect(leido?.moneda).toBeUndefined();
+    expect(leido?.montoFecha).toBeUndefined();
+  });
+
+  it("normaliza las etiquetas y no repite la misma escrita de dos formas", async () => {
+    const creado = await crearExpediente({
+      ...EXPEDIENTE_BASE,
+      etiquetas: "urgente, CLIENTE NUEVO,  Urgente ,, cliente nuevo",
+    });
+    if (!creado.ok) throw new Error(creado.error);
+    expect(creado.valor.etiquetas).toEqual(["Urgente", "Cliente Nuevo"]);
+    expect(await listarEtiquetas()).toEqual(["Cliente Nuevo", "Urgente"]);
+  });
+});
+
+describe("papelera", () => {
+  async function nuevo() {
+    const creado = await crearExpediente(EXPEDIENTE_BASE);
+    if (!creado.ok) throw new Error(creado.error);
+    return creado.valor.id;
+  }
+
+  it("el expediente sale del listado pero se sigue pudiendo abrir", async () => {
+    const id = await nuevo();
+    const enviado = await mandarAPapelera(id);
+    expect(enviado.ok).toBe(true);
+
+    expect((await listarExpedientes()).map((e) => e.id)).not.toContain(id);
+    expect((await listarPapelera()).map((e) => e.id)).toEqual([id]);
+    expect((await obtenerExpediente(id))?.enPapeleraDesde).toBeTruthy();
+  });
+
+  it("restaurar lo devuelve al listado", async () => {
+    const id = await nuevo();
+    await mandarAPapelera(id);
+    const restaurado = await restaurarExpediente(id);
+    expect(restaurado.ok).toBe(true);
+    expect((await listarExpedientes()).map((e) => e.id)).toContain(id);
+    expect(await listarPapelera()).toEqual([]);
+  });
+
+  it("no borra para siempre un expediente que no pasó por la papelera", async () => {
+    const id = await nuevo();
+    const borrado = await eliminarExpediente(id);
+    expect(borrado.ok).toBe(false);
+    expect(await obtenerExpediente(id)).toBeDefined();
+  });
+
+  it("el borrado definitivo se lleva lo que era del expediente", async () => {
+    const id = await nuevo();
+    const gasto = await crearGasto({
+      expedienteId: id,
+      tipo: "gasto",
+      concepto: "tasa_justicia",
+      detalle: "Tasa de justicia",
+      importe: "1000",
+      fecha: "2026-03-01",
+      estado: "pagado_estudio",
+    });
+    if (!gasto.ok) throw new Error(gasto.error);
+
+    await mandarAPapelera(id);
+    const borrado = await eliminarExpediente(id);
+    expect(borrado.ok).toBe(true);
+    expect(await obtenerExpediente(id)).toBeUndefined();
+    expect(await listarGastos(id)).toEqual([]);
+  });
+
+  it("el número de un expediente en la papelera no se vuelve a cargar", async () => {
+    const id = await nuevo();
+    await mandarAPapelera(id);
+    const repetido = await crearExpediente(EXPEDIENTE_BASE);
+    expect(repetido.ok).toBe(false);
+    if (!repetido.ok) expect(repetido.error).toContain("papelera");
   });
 });

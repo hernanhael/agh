@@ -119,7 +119,7 @@ export async function resumenConfiguracion(): Promise<{
     tiposProcesoActivos: datos.tiposProceso.filter((tipo) => tipo.activo).length,
     agentes: datos.agentes.length,
     agentesActivos: datos.agentes.filter((agente) => agente.activo).length,
-    expedientes: datos.expedientes.length,
+    expedientes: datos.expedientes.filter((expediente) => !expediente.enPapeleraDesde).length,
     estudioCompleto: datos.estudio.nombre !== "" && datos.estudio.matricula !== "",
   };
 }

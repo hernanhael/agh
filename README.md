@@ -2,7 +2,7 @@
 
 Plataforma para asistir al abogado litigante durante la tramitación del proceso judicial en la **Provincia de Tucumán (Argentina)**. El expediente es el eje: su historia se construye dentro de la app (notificaciones traídas del Portal del SAE, escritos redactados allí mismo, documentos, eventos) y agentes de IA configurados por el abogado lo asisten en cada etapa, en dominio cerrado sobre esa historia y las fuentes que él les dio.
 
-**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros por juzgado, OGA, estado, materia y fuero; alta con tipo de proceso; edición; baja).
+**Estado:** Fase 1 en curso. Hecho: motor de plazos, normalización de texto, Configuración (estudio, tipos de proceso, agentes) y Expedientes (listado con buscador y filtros por juzgado, OGA, estado, materia, etiqueta y fuero; alta con tipo de proceso; edición con monto, fechas clave y etiquetas; baja con papelera y restauración).
 
 La **ficha del expediente** es un cuadro de pestañas, cada una con su propia ruta y su tecla de función: Datos (F1), Partes (F2), Agenda (F3), Historia (F4), Resumen (F5), Contabilidad (F6) e IA (F7) (`docs/02-expedientes.md` §2.13).
 

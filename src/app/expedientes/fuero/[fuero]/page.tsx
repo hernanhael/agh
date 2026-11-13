@@ -52,6 +52,7 @@ export default async function FueroPage({
           materia: uno(parametros.materia),
           juzgado: uno(parametros.juzgado),
           oga: uno(parametros.oga),
+          etiqueta: uno(parametros.etiqueta),
         }}
         aviso={<Aviso error={error} hecho={hecho} />}
       />

@@ -25,6 +25,7 @@ Lo hecho hasta ahora:
 - [x] **Historia del expediente**: actuaciones del juzgado, presentaciones del estudio, de la contraria y de los auxiliares, documentos y notas, cada una con su texto completo consultable; el decreto que abre etapa distinguido y moviendo al expediente; filtros por lado de la causa y recorrido por las etapas (`02-expedientes.md` §2.3).
 - [x] **Editor de escritos** con el encabezado armado desde los metadatos, el formato del estudio configurable y la impresión a PDF (`02-expedientes.md` §2.5).
 - [x] **Ficha de Datos reducida a siete datos**, en tres grupos separados por una línea fina, con lo repetido mudado a donde ya se veía: el estado al semáforo, el fuero al juzgado, el tipo de proceso al costado del objeto (`02-expedientes.md` §2.1).
+- [x] **Ficha completa**: monto con moneda y fecha, fechas clave y etiquetas —mostrados en la ficha solo si están cargados— y filtro por etiqueta en el listado; **baja en dos pasos con papelera**, restauración y borrado definitivo que se lleva las partes, la historia y la contabilidad (`02-expedientes.md` §2.1 y §3).
 - [x] **Nota del expediente con formato** —negrita, itálica y subrayado—, editable con un clic sobre el propio texto, guardada con marcas en la misma columna de texto y con tests del formato (`lib/notas`, `02-expedientes.md` §2.1).
 - [x] **Atajos de teclado de la ficha**: `alt+n` para la nota y `alt+e` para el formulario, los dos abren y cierran, y las teclas escritas al pasar el mouse en lugar de a la vista todo el tiempo (`02-expedientes.md` §2.13).
 - [x] Almacén JSON provisorio (`07-arquitectura.md` §3.1) para poder usar las pantallas antes de Supabase.
@@ -34,7 +35,7 @@ Lo que falta:
 - Supabase inicializado y autenticación con segundo factor.
 - Migraciones del modelo de datos (`06`) con RLS; semillas copiadas al abogado como ejemplos editables; **reemplazo del almacén JSON** (requisito para desplegar).
 - **Configuración**: catálogo de plazos, plantillas de escritos, materias, juzgados, dispositivos SAE.
-- Expedientes: montos y fechas clave, **agenda de contactos** del estudio (hoy cada parte guarda sus datos adentro del expediente, `02-expedientes.md` §2.14), historial de transiciones de etapa, baja lógica y archivo.
+- Expedientes: **agenda de contactos** del estudio (hoy cada parte guarda sus datos adentro del expediente, `02-expedientes.md` §2.14) e historial de transiciones de etapa.
 - **Editor de escritos**: versiones, texto enriquecido e importación y exportación Word (hecho el editor con encabezado desde los metadatos, el formato configurable del estudio y la impresión a PDF, `02-expedientes.md` §2.5).
 - Documentos con subida y extracción de texto.
 - Calendario de días inhábiles precargado para el motor de plazos (feriados, ferias según Acordada 840/26, asuetos).

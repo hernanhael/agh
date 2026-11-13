@@ -83,6 +83,7 @@ const FILTROS: Record<
   oga: { etiqueta: "OGA", opciones: "ogas" },
   estado: { etiqueta: "Estado", opciones: "estados" },
   materia: { etiqueta: "Materia", opciones: "materias" },
+  etiqueta: { etiqueta: "Etiqueta", opciones: "etiquetas" },
 };
 
 export function ListadoExpedientes({
@@ -235,7 +236,8 @@ export function ListadoExpedientes({
               Ningún expediente coincide con la búsqueda.
             </p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Se busca por número, carátula, actor, demandado, objeto, materia, juzgado y OGA.
+              Se busca por número, carátula, actor, demandado, objeto, materia, juzgado, OGA y
+              etiquetas.
             </p>
             <button
               type="button"

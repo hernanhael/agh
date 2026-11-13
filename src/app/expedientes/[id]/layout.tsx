@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { AvisoRuta } from "@/components/AvisoRuta";
 import { ChipProcesal } from "@/components/SituacionProcesal";
-import { Encabezado } from "@/components/ui";
-import { hoy, identificador } from "@/lib/datos";
+import { claseBotonSecundario, Encabezado } from "@/components/ui";
+import { enPapelera, hoy, identificador } from "@/lib/datos";
+import { formatoFecha } from "@/lib/plazos";
+import { restaurar } from "../acciones";
 import { fueroDe } from "@/lib/datos/fueros";
 import { situacionCaducidad } from "@/lib/procesal";
 import { cargarExpediente } from "./cargar";
@@ -62,6 +64,32 @@ export default async function ExpedienteLayout({ children, params }: LayoutProps
       <Suspense fallback={null}>
         <AvisoRuta />
       </Suspense>
+
+      {/*
+        Un expediente de la papelera se sigue pudiendo abrir —por eso no da
+        404—, pero lo dice arriba de todo y ofrece volver a ponerlo en uso.
+      */}
+      {enPapelera(expediente) ? (
+        <div
+          role="status"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+        >
+          <span>
+            Este expediente está en la{" "}
+            <Link href="/expedientes/papelera" className="underline underline-offset-2">
+              papelera
+            </Link>{" "}
+            desde el {formatoFecha((expediente.enPapeleraDesde ?? "").slice(0, 10))}: no aparece en
+            los listados.
+          </span>
+          <form action={restaurar}>
+            <input type="hidden" name="id" value={expediente.id} />
+            <button type="submit" className={claseBotonSecundario}>
+              Restaurar
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-linea bg-superficie">
         <PestanasExpediente expedienteId={expediente.id} />

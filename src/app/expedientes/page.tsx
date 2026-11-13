@@ -1,8 +1,8 @@
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Aviso, claseBotonAccion, mensajes } from "@/components/ui";
-import { listarExpedientes } from "@/lib/datos";
+import { listarExpedientes, listarPapelera } from "@/lib/datos";
 import { fuerosDisponibles } from "@/lib/datos/fueros";
 import { TarjetaFuero } from "./TarjetaFuero";
 
@@ -18,7 +18,7 @@ import { TarjetaFuero } from "./TarjetaFuero";
  */
 export default async function ExpedientesPage({ searchParams }: PageProps<"/expedientes">) {
   const parametros = await searchParams;
-  const expedientes = await listarExpedientes();
+  const [expedientes, papelera] = await Promise.all([listarExpedientes(), listarPapelera()]);
   const fueros = fuerosDisponibles(expedientes);
 
   const pedido = Array.isArray(parametros.fuero) ? parametros.fuero[0] : parametros.fuero;
@@ -65,6 +65,20 @@ export default async function ExpedientesPage({ searchParams }: PageProps<"/expe
           ))}
         </ul>
       </nav>
+
+      {/*
+        La papelera aparece solo cuando tiene algo: vacía no hay nada que ir a
+        buscar, y un enlace más al pie sería ruido.
+      */}
+      {papelera.length > 0 ? (
+        <Link
+          href="/expedientes/papelera"
+          className="mt-8 inline-flex items-center gap-1.5 text-xs text-zinc-500 underline decoration-dotted underline-offset-4 transition-colors hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          <Trash2 aria-hidden className="size-3.5" />
+          Papelera ({papelera.length})
+        </Link>
+      ) : null}
     </div>
   );
 }

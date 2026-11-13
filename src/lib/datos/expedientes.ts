@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { importeDesdeTexto } from "@/lib/contabilidad/importe";
 import {
   construirCaratula,
   nombrePropio,
   normalizarEspacios,
+  normalizarParaBuscar,
   numeroExpediente,
   oracion,
   partirCaratula,
@@ -16,8 +18,10 @@ import { correcto, fallo, type Resultado } from "./resultado";
 import type {
   CentroJudicial,
   ClaseExpediente,
+  ConceptoMonto,
   EstadoExpediente,
   Expediente,
+  Moneda,
   RolCliente,
   TipoProceso,
 } from "./tipos";
@@ -59,16 +63,64 @@ export interface EntradaExpediente {
   audienciaTipo: string;
   audienciaFecha: string;
   audienciaHora: string;
+  /** Fechas clave. Una fecha mal escrita se guarda vacía. */
+  fechaMediacion: string;
+  fechaDemanda: string;
+  fechaRadicacion: string;
+  fechaSentencia: string;
+  fechaFirmeza: string;
+  /** Monto escrito a mano ("$ 1.234.567,89"). Vacío si no hay monto. */
+  monto: string;
+  montoConcepto: ConceptoMonto;
+  moneda: Moneda;
+  /** Fecha a la que está expresado el monto. Si falta, la de hoy. */
+  montoFecha: string;
+  /** Etiquetas separadas por coma, tal como se escriben en el formulario. */
+  etiquetas: string;
 }
 
+/** Si el expediente está en la papelera. */
+export function enPapelera(expediente: Expediente): boolean {
+  return Boolean(expediente.enPapeleraDesde);
+}
+
+/**
+ * Los expedientes vigentes: los de la papelera no aparecen en ningún listado
+ * hasta que se restauran.
+ */
 export async function listarExpedientes(): Promise<Expediente[]> {
   const { expedientes } = await leerDatos();
-  return [...expedientes].sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+  return expedientes
+    .filter((expediente) => !enPapelera(expediente))
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
 }
 
+/** Los expedientes de la papelera, el último que entró primero. */
+export async function listarPapelera(): Promise<Expediente[]> {
+  const { expedientes } = await leerDatos();
+  return expedientes
+    .filter(enPapelera)
+    .sort((a, b) => (b.enPapeleraDesde ?? "").localeCompare(a.enPapeleraDesde ?? ""));
+}
+
+/**
+ * Un expediente por su identificador, **también si está en la papelera**: la
+ * ficha de un expediente borrado se sigue pudiendo abrir, con el aviso y el
+ * botón para restaurarlo.
+ */
 export async function obtenerExpediente(id: string): Promise<Expediente | undefined> {
   const { expedientes } = await leerDatos();
   return expedientes.find((expediente) => expediente.id === id);
+}
+
+/** Las etiquetas que ya se usaron, para sugerirlas en el formulario. */
+export async function listarEtiquetas(): Promise<string[]> {
+  const { expedientes } = await leerDatos();
+  const etiquetas = new Set<string>();
+  for (const expediente of expedientes) {
+    for (const etiqueta of expediente.etiquetas ?? []) etiquetas.add(etiqueta);
+  }
+  return [...etiquetas].sort((a, b) => a.localeCompare(b, "es"));
 }
 
 /**
@@ -108,6 +160,61 @@ function hora(valor: string): string {
  */
 function nominacion(valor: string): string {
   return normalizarEspacios(valor).toUpperCase();
+}
+
+/**
+ * Etiquetas escritas separadas por coma: cada una con forma de título, sin
+ * repetidas —"urgente" y "URGENTE" son la misma— y en el orden en que se
+ * escribieron.
+ */
+export function normalizarEtiquetas(texto: string, acentuar: boolean): string[] {
+  const vistas = new Set<string>();
+  const etiquetas: string[] = [];
+  for (const cruda of texto.split(/[,;\n]/)) {
+    const etiqueta = titulo(cruda, { acentuar });
+    const clave = normalizarParaBuscar(etiqueta);
+    if (!clave || vistas.has(clave)) continue;
+    vistas.add(clave);
+    etiquetas.push(etiqueta);
+  }
+  return etiquetas;
+}
+
+/**
+ * El monto con sus datos, o todo vacío si no hay monto. Un monto que no se
+ * puede leer es un error y no un vacío: perderlo en silencio al guardar sería
+ * peor que pedir que se corrija.
+ */
+function monto(
+  entrada: EntradaExpediente,
+):
+  | { ok: true; campos: Pick<Expediente, "montoCentavos" | "montoConcepto" | "moneda" | "montoFecha"> }
+  | { ok: false; error: string } {
+  if (!entrada.monto.trim()) {
+    return {
+      ok: true,
+      campos: {
+        montoCentavos: undefined,
+        montoConcepto: undefined,
+        moneda: undefined,
+        montoFecha: undefined,
+      },
+    };
+  }
+  const centavos = importeDesdeTexto(entrada.monto);
+  if (centavos === undefined) {
+    return { ok: false, error: `No se entiende el monto "${entrada.monto.trim()}".` };
+  }
+  return {
+    ok: true,
+    campos: {
+      montoCentavos: centavos,
+      montoConcepto: entrada.montoConcepto === "base_regulatoria" ? "base_regulatoria" : "reclamado",
+      moneda: entrada.moneda === "USD" ? "USD" : "ARS",
+      // Sin fecha, el monto está expresado al día en que se cargó.
+      montoFecha: fechaValida(entrada.montoFecha) || hoy(),
+    },
+  };
 }
 
 /**
@@ -155,7 +262,24 @@ function normalizar(entrada: EntradaExpediente, acentuar: boolean) {
     audienciaFecha,
     audienciaTipo: audienciaFecha ? titulo(entrada.audienciaTipo, opciones) : "",
     audienciaHora: audienciaFecha ? hora(entrada.audienciaHora) : "",
+    fechaMediacion: fechaValida(entrada.fechaMediacion),
+    fechaDemanda: fechaValida(entrada.fechaDemanda),
+    fechaRadicacion: fechaValida(entrada.fechaRadicacion),
+    fechaSentencia: fechaValida(entrada.fechaSentencia),
+    fechaFirmeza: fechaValida(entrada.fechaFirmeza),
+    etiquetas: normalizarEtiquetas(entrada.etiquetas, acentuar),
   };
+}
+
+/**
+ * El aviso de número repetido. Un expediente en la papelera también ocupa su
+ * número —se puede restaurar—, y el aviso lo dice para que no se lo busque en
+ * el listado.
+ */
+function yaExiste(repetido: Expediente, numero: string, anio: string): string {
+  return enPapelera(repetido)
+    ? `El expediente ${numero}/${anio} de ese centro judicial está en la papelera: restauralo en lugar de cargarlo de nuevo.`
+    : `Ya hay un expediente ${numero}/${anio} en ese centro judicial.`;
 }
 
 /** La etapa pedida si existe en el tipo de proceso; si no, la primera. */
@@ -177,22 +301,22 @@ export async function crearExpediente(
     const tipo = datos.tiposProceso.find((candidato) => candidato.id === entrada.tipoProcesoId);
     if (!tipo) return fallo<Expediente>("Elegí el tipo de proceso del juicio.");
 
-    const repetido = datos.expedientes.some(
+    const conMonto = monto(entrada);
+    if (!conMonto.ok) return fallo<Expediente>(conMonto.error);
+
+    const repetido = datos.expedientes.find(
       (expediente) =>
         expediente.numero === campos.numero &&
         expediente.anio === campos.anio &&
         expediente.centroJudicial === campos.centroJudicial,
     );
-    if (repetido) {
-      return fallo<Expediente>(
-        `Ya hay un expediente ${campos.numero}/${campos.anio} en ese centro judicial.`,
-      );
-    }
+    if (repetido) return fallo<Expediente>(yaExiste(repetido, campos.numero, campos.anio));
 
     const marca = ahora();
     const nuevo: Expediente = {
       id: randomUUID(),
       ...campos,
+      ...conMonto.campos,
       tipoProcesoId: tipo.id,
       etapaActual: etapaInicial(tipo, entrada.etapaActual),
       etapaDesde: hoy(),
@@ -224,23 +348,22 @@ export async function actualizarExpediente(
     const tipo = datos.tiposProceso.find((candidato) => candidato.id === entrada.tipoProcesoId);
     if (!tipo) return fallo<Expediente>("Elegí el tipo de proceso del juicio.");
 
-    const repetido = datos.expedientes.some(
+    const conMonto = monto(entrada);
+    if (!conMonto.ok) return fallo<Expediente>(conMonto.error);
+
+    const repetido = datos.expedientes.find(
       (otro) =>
         otro.id !== id &&
         otro.numero === campos.numero &&
         otro.anio === campos.anio &&
         otro.centroJudicial === campos.centroJudicial,
     );
-    if (repetido) {
-      return fallo<Expediente>(
-        `Ya hay un expediente ${campos.numero}/${campos.anio} en ese centro judicial.`,
-      );
-    }
+    if (repetido) return fallo<Expediente>(yaExiste(repetido, campos.numero, campos.anio));
 
     const etapa = etapaInicial(tipo, entrada.etapaActual);
     const cambioDeEtapa = etapa !== expediente.etapaActual;
 
-    Object.assign(expediente, campos, {
+    Object.assign(expediente, campos, conMonto.campos, {
       tipoProcesoId: tipo.id,
       etapaActual: etapa,
       etapaDesde: cambioDeEtapa ? hoy() : expediente.etapaDesde,
@@ -279,11 +402,49 @@ export async function actualizarNotasExpediente(
   });
 }
 
+/**
+ * Manda el expediente a la papelera: deja de aparecer en los listados, pero
+ * conserva todo lo suyo y se puede restaurar (`restaurarExpediente`).
+ */
+export async function mandarAPapelera(id: string): Promise<Resultado<Expediente>> {
+  return modificarDatos((datos) => {
+    const expediente = datos.expedientes.find((candidato) => candidato.id === id);
+    if (!expediente) return fallo<Expediente>("No se encontró el expediente.");
+    if (enPapelera(expediente)) return fallo<Expediente>("El expediente ya está en la papelera.");
+    expediente.enPapeleraDesde = ahora();
+    return correcto(expediente);
+  });
+}
+
+/** Saca el expediente de la papelera y lo devuelve a su listado. */
+export async function restaurarExpediente(id: string): Promise<Resultado<Expediente>> {
+  return modificarDatos((datos) => {
+    const expediente = datos.expedientes.find((candidato) => candidato.id === id);
+    if (!expediente) return fallo<Expediente>("No se encontró el expediente.");
+    if (!enPapelera(expediente)) return fallo<Expediente>("El expediente no está en la papelera.");
+    delete expediente.enPapeleraDesde;
+    return correcto(expediente);
+  });
+}
+
+/**
+ * Borra el expediente **para siempre**, junto con sus partes, su historia y su
+ * contabilidad, que sin el expediente no tienen a qué pertenecer.
+ *
+ * Solo se borra lo que ya está en la papelera: es el segundo paso de una baja,
+ * nunca el primero.
+ */
 export async function eliminarExpediente(id: string): Promise<Resultado<string>> {
   return modificarDatos((datos) => {
     const indice = datos.expedientes.findIndex((expediente) => expediente.id === id);
     if (indice === -1) return fallo<string>("No se encontró el expediente.");
+    if (!enPapelera(datos.expedientes[indice])) {
+      return fallo<string>("Solo se borra definitivamente un expediente que está en la papelera.");
+    }
     const [borrado] = datos.expedientes.splice(indice, 1);
+    datos.partes = (datos.partes ?? []).filter((parte) => parte.expedienteId !== id);
+    datos.historia = (datos.historia ?? []).filter((entrada) => entrada.expedienteId !== id);
+    datos.gastos = (datos.gastos ?? []).filter((gasto) => gasto.expedienteId !== id);
     return correcto(borrado.caratula);
   });
 }

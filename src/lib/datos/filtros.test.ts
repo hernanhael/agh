@@ -195,6 +195,25 @@ describe("aplicarFiltros", () => {
     expect(filtrar({ oga: "oga familia concepcion" })).toEqual(["diaz"]);
   });
 
+  it("filtra por etiqueta y la encuentra en la búsqueda", () => {
+    const conEtiquetas = [
+      expediente({ id: "a", etiquetas: ["Urgente", "Cliente ART"] }),
+      expediente({ id: "b", etiquetas: ["Cliente ART"] }),
+      expediente({ id: "c" }),
+    ];
+    const filtrarEtiquetas = (parcial: Partial<Filtros>) =>
+      aplicarFiltros(conEtiquetas, { ...FILTROS_VACIOS, ...parcial }).map((e) => e.id);
+    expect(filtrarEtiquetas({ etiqueta: "Urgente" })).toEqual(["a"]);
+    expect(filtrarEtiquetas({ etiqueta: "cliente art" })).toEqual(["a", "b"]);
+    expect(filtrarEtiquetas({ consulta: "urgente" })).toEqual(["a"]);
+    expect(hayFiltros({ ...FILTROS_VACIOS, etiqueta: "Urgente" })).toBe(true);
+    // Cada etiqueta cuenta los expedientes que la tienen.
+    expect(opcionesDeFiltro(conEtiquetas).etiquetas).toEqual([
+      { valor: "Cliente ART", etiqueta: "Cliente ART", cantidad: 2 },
+      { valor: "Urgente", etiqueta: "Urgente", cantidad: 1 },
+    ]);
+  });
+
   it("combina los filtros con la búsqueda", () => {
     expect(filtrar({ estado: "en_tramite", consulta: "rogel" })).toEqual(["rogel"]);
     // El estado excluye al único que coincide con el texto.

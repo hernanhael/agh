@@ -2,14 +2,18 @@
 
 import { useState } from "react";
 import { Campo, claseBotonPrimario, claseEntrada, claseEtapa } from "@/components/ui";
-import { formatearCaratula, partirCaratula } from "@/lib/formato";
+import { importeParaEditar } from "@/lib/contabilidad/importe";
+import { formatearCaratula, normalizarParaBuscar, partirCaratula } from "@/lib/formato";
 // Solo tipos y constantes: este módulo no toca la base ni el sistema de
 // archivos, así que se puede importar desde un componente de cliente.
 import {
   CENTROS_JUDICIALES,
   CLASES_EXPEDIENTE,
+  CONCEPTOS_MONTO,
   ESTADOS_EXPEDIENTE,
+  FECHAS_CLAVE,
   FUEROS,
+  MONEDAS,
   ROLES_CLIENTE,
   TIPOS_AUDIENCIA,
   type CentroJudicial,
@@ -35,6 +39,7 @@ export function FormularioExpediente({
   tiposProceso,
   materias,
   radicaciones,
+  etiquetasConocidas = [],
   centroJudicialHabitual,
   hoy,
   acentuar,
@@ -47,6 +52,8 @@ export function FormularioExpediente({
   materias: string[];
   /** Juzgados, nominaciones y OGA que ya se usaron, para sugerirlos. */
   radicaciones: { juzgados: string[]; nominaciones: string[]; oficinasGestion: string[] };
+  /** Etiquetas que ya se usan en otros expedientes, para sumarlas con un clic. */
+  etiquetasConocidas?: string[];
   centroJudicialHabitual: CentroJudicial;
   /** Día de hoy en 'YYYY-MM-DD': es el último movimiento de un expediente nuevo. */
   hoy: string;
@@ -60,6 +67,25 @@ export function FormularioExpediente({
     expediente?.tipoProcesoId ?? tiposProceso[0]?.id ?? "",
   );
   const [caratula, setCaratula] = useState(expediente?.caratula ?? "");
+  const [etiquetas, setEtiquetas] = useState((expediente?.etiquetas ?? []).join(", "));
+
+  // Las etiquetas escritas, comparables, para no ofrecer las que ya están.
+  const escritas = new Set(
+    etiquetas
+      .split(/[,;\n]/)
+      .map((etiqueta) => normalizarParaBuscar(etiqueta))
+      .filter(Boolean),
+  );
+  const sugeridas = etiquetasConocidas.filter(
+    (etiqueta) => !escritas.has(normalizarParaBuscar(etiqueta)),
+  );
+
+  function sumarEtiqueta(etiqueta: string) {
+    setEtiquetas((actuales) => {
+      const previas = actuales.trim().replace(/,$/, "");
+      return previas ? `${previas}, ${etiqueta}` : etiqueta;
+    });
+  }
 
   const tipoElegido = tiposProceso.find((tipo) => tipo.id === tipoProcesoId);
   const partes = partirCaratula(caratula);
@@ -392,6 +418,111 @@ export function FormularioExpediente({
             className={claseEntrada}
           />
         </Campo>
+      </div>
+
+      {/*
+        Fechas clave de la causa. Son mojones para tener a mano: no mueven la
+        etapa ni el último movimiento, que tienen sus propios campos.
+      */}
+      <fieldset>
+        <legend className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          Fechas clave
+        </legend>
+        <div className="mt-1 grid gap-4 sm:grid-cols-5">
+          {FECHAS_CLAVE.map(({ campo, etiqueta }) => (
+            <Campo key={campo} etiqueta={etiqueta}>
+              <input
+                type="date"
+                name={campo}
+                defaultValue={expediente?.[campo] ?? ""}
+                className={claseEntrada}
+              />
+            </Campo>
+          ))}
+        </div>
+      </fieldset>
+
+      {/*
+        Monto del juicio. Se escribe como se escribe en Argentina —"1.234.567,89"—
+        y se guarda en centavos, como los importes de la contabilidad. La fecha
+        importa: un monto de 2026 no se compara con uno de 2029 sin reexpresarlo.
+      */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Campo etiqueta="Monto" ayuda="Vacío si no hay monto.">
+          <input
+            name="monto"
+            defaultValue={
+              expediente?.montoCentavos !== undefined
+                ? importeParaEditar(expediente.montoCentavos)
+                : ""
+            }
+            placeholder="1.500.000,00"
+            inputMode="decimal"
+            className={claseEntrada}
+          />
+        </Campo>
+        <Campo etiqueta="Qué es">
+          <select
+            name="montoConcepto"
+            defaultValue={expediente?.montoConcepto ?? "reclamado"}
+            className={claseEntrada}
+          >
+            {CONCEPTOS_MONTO.map((concepto) => (
+              <option key={concepto.valor} value={concepto.valor}>
+                {concepto.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo etiqueta="Moneda">
+          <select name="moneda" defaultValue={expediente?.moneda ?? "ARS"} className={claseEntrada}>
+            {MONEDAS.map((moneda) => (
+              <option key={moneda.valor} value={moneda.valor}>
+                {moneda.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo etiqueta="Al día" ayuda="Si queda vacía, la de hoy.">
+          <input
+            type="date"
+            name="montoFecha"
+            defaultValue={expediente?.montoFecha ?? ""}
+            className={claseEntrada}
+          />
+        </Campo>
+      </div>
+
+      {/*
+        Etiquetas libres, separadas por coma. Las que ya se usan en otros
+        expedientes se suman con un clic: escribir "Urgente" en uno y "urgentes"
+        en otro partiría el grupo en dos.
+      */}
+      <div>
+        <Campo etiqueta="Etiquetas" ayuda="Separadas por coma. Sirven para agrupar y filtrar el listado.">
+          <input
+            name="etiquetas"
+            value={etiquetas}
+            onChange={(evento) => setEtiquetas(evento.target.value)}
+            placeholder="Urgente, Cliente ART"
+            className={claseEntrada}
+          />
+        </Campo>
+        {sugeridas.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-zinc-500 dark:text-zinc-500">Ya usadas:</span>
+            {sugeridas.map((etiqueta) => (
+              <button
+                key={etiqueta}
+                type="button"
+                onClick={() => sumarEtiqueta(etiqueta)}
+                className="rounded-full border border-linea-fuerte px-2 py-0.5 text-xs text-zinc-600 transition-colors hover:border-acento hover:text-acento dark:text-zinc-400"
+              >
+                + {etiqueta}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/*

@@ -1,20 +1,33 @@
 import type { ReactNode } from "react";
 import { StickyNote, type LucideIcon } from "lucide-react";
 import { Rotulo } from "@/components/Registro";
-import { claseBotonPeligro, claseSeparador, Dato, Marca, Pendientes } from "@/components/ui";
+import {
+  claseBotonSecundario,
+  claseSeparador,
+  Dato,
+  Marca,
+  Pendientes,
+} from "@/components/ui";
+import { formatoImporte } from "@/lib/contabilidad/importe";
 import {
   CENTROS_JUDICIALES,
+  CONCEPTOS_MONTO,
+  enPapelera,
   etiquetaDe,
+  FECHAS_CLAVE,
   hoy,
+  listarEtiquetas,
   listarMaterias,
+  MONEDAS,
   listarRadicaciones,
   listarTiposProcesoActivos,
   nombreJuzgado,
   obtenerEstudio,
+  type Expediente,
 } from "@/lib/datos";
 import { tipoProcesoBreve } from "@/lib/formato";
 import { formatoFecha, haceCuanto } from "@/lib/plazos";
-import { borrarExpediente, guardarExpediente } from "../../acciones";
+import { enviarAPapelera, guardarExpediente } from "../../acciones";
 import { FormularioExpediente } from "../../FormularioExpediente";
 import { ATAJO_EXPEDIENTE, ATAJO_NOTA, TECLA_EXPEDIENTE } from "../atajos";
 import { Desplegable } from "../Desplegable";
@@ -196,6 +209,60 @@ function SinCargar({ children }: { children: string }) {
   return <span className="font-normal text-zinc-400 dark:text-zinc-600">{children}</span>;
 }
 
+/**
+ * Lo que precisa el objeto: el monto, las fechas clave y las etiquetas, **solo
+ * lo que está cargado**. Un expediente recién dado de alta no tiene ninguno, y
+ * cinco fechas con un guion cada una serían cinco renglones que leer para
+ * enterarse de que no hay nada.
+ *
+ * Van en una tira que se acomoda sola y no en la rejilla de dos columnas de
+ * los otros grupos: son datos sueltos, de uno a siete, y la rejilla dejaría
+ * huecos según cuántos haya.
+ */
+function PrecisionesDelObjeto({ expediente }: { expediente: Expediente }) {
+  const fechas = FECHAS_CLAVE.filter(({ campo }) => expediente[campo]);
+  const etiquetas = expediente.etiquetas ?? [];
+  const hayMonto = expediente.montoCentavos !== undefined;
+  if (!hayMonto && fechas.length === 0 && etiquetas.length === 0) return null;
+
+  const simbolo = MONEDAS.find((moneda) => moneda.valor === expediente.moneda)?.simbolo ?? "$";
+
+  return (
+    <>
+      {hayMonto || fechas.length > 0 ? (
+        <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          {hayMonto ? (
+            <Dato rotulo={etiquetaDe(CONCEPTOS_MONTO, expediente.montoConcepto ?? "reclamado")}>
+              <span className="tabular-nums">
+                {formatoImporte(expediente.montoCentavos ?? 0, simbolo)}
+              </span>
+              {expediente.montoFecha ? (
+                <span className="ml-1.5 text-xs text-zinc-500 dark:text-zinc-500">
+                  al {formatoFecha(expediente.montoFecha)}
+                </span>
+              ) : null}
+            </Dato>
+          ) : null}
+          {fechas.map(({ campo, etiqueta }) => (
+            <Dato key={campo} rotulo={etiqueta}>
+              <span className="tabular-nums">{formatoFecha(expediente[campo] ?? "")}</span>
+            </Dato>
+          ))}
+        </dl>
+      ) : null}
+      {etiquetas.length > 0 ? (
+        <ul aria-label="Etiquetas" className="mt-3 flex flex-wrap gap-1.5">
+          {etiquetas.map((etiqueta) => (
+            <li key={etiqueta}>
+              <Marca>{etiqueta}</Marca>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
 /** Las marcas de tiempo del almacén son ISO completas: alcanza el día. */
 function dia(marca: string): string {
   return formatoFecha(marca.slice(0, 10));
@@ -206,11 +273,12 @@ export default async function DatosExpedientePage({
 }: PageProps<"/expedientes/[id]/datos">) {
   const { id } = await params;
   const expediente = await cargarExpediente(id);
-  const [tipo, tiposActivos, materias, radicaciones, estudio] = await Promise.all([
+  const [tipo, tiposActivos, materias, radicaciones, etiquetas, estudio] = await Promise.all([
     cargarTipoProceso(expediente.tipoProcesoId),
     listarTiposProcesoActivos(),
     listarMaterias(),
     listarRadicaciones(),
+    listarEtiquetas(),
     obtenerEstudio(),
   ]);
 
@@ -262,9 +330,10 @@ export default async function DatosExpedientePage({
           "Para caducidad" porque es lo que significa.
         */}
         {/*
-          El grupo no lleva datos debajo: es el título de la ficha. La etapa
-          bajó a la fila, donde es una pregunta por derecho propio. Acá van a
-          entrar el monto y las fechas clave cuando existan (ver `Pendientes`).
+          El grupo es el título de la ficha. La etapa bajó a la fila, donde es
+          una pregunta por derecho propio. Debajo van el monto, las fechas
+          clave y las etiquetas, y solo las que estén cargadas
+          (`PrecisionesDelObjeto`).
 
           El **tipo de proceso** va al lado del objeto y no como dato aparte:
           entre guiones, en minúscula y en el gris y el cuerpo de los rótulos de
@@ -285,7 +354,9 @@ export default async function DatosExpedientePage({
               ) : null}
             </>
           }
-        />
+        >
+          <PrecisionesDelObjeto expediente={expediente} />
+        </Bloque>
 
         {/*
           **Dónde tramita, en qué va y desde cuándo**: las tres preguntas de una
@@ -400,11 +471,7 @@ export default async function DatosExpedientePage({
 
       <Pendientes
         items={[
-          "Fecha de inicio y el resto de las fechas clave: inicio de mediación, demanda, radicación, sentencia y firmeza (§2.1).",
-          "Monto reclamado o base regulatoria, con moneda y fecha.",
-          "Etiquetas para agrupar expedientes.",
           "Juzgado y secretaría tomados del catálogo de Configuración, en lugar de dos campos libres.",
-          "Baja lógica y archivo: hoy borrar un expediente es definitivo.",
         ]}
       />
 
@@ -441,6 +508,7 @@ export default async function DatosExpedientePage({
             tiposProceso={tiposDisponibles}
             materias={materias}
             radicaciones={radicaciones}
+            etiquetasConocidas={etiquetas}
             centroJudicialHabitual={estudio.centroJudicialHabitual}
             hoy={diaDeHoy}
             acentuar={estudio.correccionDeTildes}
@@ -448,15 +516,24 @@ export default async function DatosExpedientePage({
             textoBoton="Guardar cambios"
           />
         </div>
-        <div className="mt-4 flex items-center gap-3 border-t border-linea pt-4">
-          <form action={borrarExpediente}>
-            <input type="hidden" name="id" value={expediente.id} />
-            <button type="submit" className={claseBotonPeligro}>
-              Borrar expediente
-            </button>
-          </form>
-          <Marca tono="aviso">No se puede deshacer</Marca>
-        </div>
+        {/*
+          La baja es en dos pasos: de acá el expediente va a la papelera, con
+          su historia, sus partes y su contabilidad intactas, y se restaura con
+          un clic. El borrado definitivo se hace desde la papelera.
+        */}
+        {enPapelera(expediente) ? null : (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-linea pt-4">
+            <form action={enviarAPapelera}>
+              <input type="hidden" name="id" value={expediente.id} />
+              <button type="submit" className={claseBotonSecundario}>
+                Mandar a la papelera
+              </button>
+            </form>
+            <span className="text-xs text-zinc-500 dark:text-zinc-500">
+              Sale del listado y se puede restaurar.
+            </span>
+          </div>
+        )}
       </Desplegable>
     </>
   );
